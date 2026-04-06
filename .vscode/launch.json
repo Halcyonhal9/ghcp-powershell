@@ -1,0 +1,59 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Attach to pwsh",
+      "type": "coreclr",
+      "request": "attach",
+      "processName": "pwsh",
+      "justMyCode": true
+    },
+    {
+      "name": "Launch pwsh with Module",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "pwsh",
+      "args": [
+        "-NoExit",
+        "-Command",
+        "Import-Module ${workspaceFolder}/out/CopilotPS.psd1"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "preLaunchTask": "build"
+    },
+    {
+      "name": "Run Unit Tests",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "dotnet",
+      "args": [
+        "test",
+        "${workspaceFolder}/tests/CopilotPS.Tests.csproj",
+        "--filter",
+        "Category=Unit",
+        "--no-build"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "preLaunchTask": "build-tests"
+    },
+    {
+      "name": "Run End-to-End Tests",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "dotnet",
+      "args": [
+        "test",
+        "${workspaceFolder}/tests/CopilotPS.Tests.csproj",
+        "--filter",
+        "Category=EndToEnd",
+        "--no-build"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "preLaunchTask": "build-tests"
+    }
+  ]
+}
