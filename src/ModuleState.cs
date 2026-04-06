@@ -5,46 +5,34 @@ namespace CopilotPS;
 
 internal static class ModuleState
 {
-    private static CopilotClient? client;
-    private static CopilotSession? currentSession;
-
-    internal static CopilotClient? Client
-    {
-        get => client;
-        set => client = value;
-    }
-
-    internal static CopilotSession? CurrentSession
-    {
-        get => currentSession;
-        set => currentSession = value;
-    }
+    internal static CopilotClient? Client { get; set; }
+    internal static CopilotSession? CurrentSession { get; set; }
 
     internal static CopilotClient RequireClient(CopilotClient? explicitClient)
     {
-        return explicitClient ?? client ?? throw new PSInvalidOperationException(
+        return explicitClient ?? Client ?? throw new PSInvalidOperationException(
             "No Copilot client available. Run New-CopilotClient first, or pass -Client explicitly.");
     }
 
     internal static CopilotSession RequireSession(CopilotSession? explicitSession)
     {
-        return explicitSession ?? currentSession ?? throw new PSInvalidOperationException(
+        return explicitSession ?? CurrentSession ?? throw new PSInvalidOperationException(
             "No Copilot session available. Run New-CopilotSession first, or pass -Session explicitly.");
     }
 
     internal static async Task CleanupAsync()
     {
-        if (currentSession is not null)
+        if (CurrentSession is not null)
         {
-            await currentSession.DisposeAsync();
-            currentSession = null;
+            await CurrentSession.DisposeAsync();
+            CurrentSession = null;
         }
 
-        if (client is not null)
+        if (Client is not null)
         {
-            await client.StopAsync();
-            client.Dispose();
-            client = null;
+            await Client.StopAsync();
+            Client.Dispose();
+            Client = null;
         }
     }
 }
@@ -77,12 +65,10 @@ internal static class PermissionHandlers
     };
 
     internal static PermissionRequestHandler AutoApprove => (request, invocation) =>
-    {
-        return Task.FromResult(new PermissionRequestResult
+        Task.FromResult(new PermissionRequestResult
         {
             Kind = new PermissionRequestResultKind("approve")
         });
-    };
 }
 
 internal static class UserInputHandlers
