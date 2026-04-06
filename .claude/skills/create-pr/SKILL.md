@@ -49,8 +49,8 @@ Review ALL commits on the branch (not just the latest). Understand:
 <1-3 bullet points describing what changed and why>
 
 ## Test plan
-- [ ] `dotnet test tests/CopilotPS.Tests.csproj --filter "Category=Unit"` passes
-- [ ] `dotnet publish src/CopilotPS.csproj -c Release -o out` succeeds
+- [ ] `dotnet test tests/CopilotCmdlets.Tests.csproj --filter "Category=Unit"` passes
+- [ ] `dotnet publish src/CopilotCmdlets.csproj -c Release -o out` succeeds
 - [ ] <Additional verification steps>
 
 <session-link>

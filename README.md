@@ -1,4 +1,4 @@
-# CopilotPS
+# CopilotCmdlets
 
 PowerShell wrapper for the [GitHub Copilot SDK](https://www.nuget.org/packages/GitHub.Copilot.SDK). Thin binary cmdlets that delegate directly to the .NET SDK — no custom business logic.
 
@@ -11,7 +11,7 @@ PowerShell wrapper for the [GitHub Copilot SDK](https://www.nuget.org/packages/G
 ## Build
 
 ```bash
-dotnet publish src/CopilotPS.csproj -c Release -o out
+dotnet publish src/CopilotCmdlets.csproj -c Release -o out
 ```
 
 Or use the convenience script:
@@ -23,7 +23,7 @@ pwsh build.ps1
 ## Quickstart
 
 ```powershell
-Import-Module ./out/CopilotPS.psd1
+Import-Module ./out/CopilotCmdlets.psd1
 
 # Connect to the Copilot CLI
 New-CopilotClient
@@ -95,13 +95,13 @@ Stop-CopilotClient
 
 ```bash
 # Unit tests (no network required)
-dotnet test tests/CopilotPS.Tests.csproj --filter "Category=Unit"
+dotnet test tests/CopilotCmdlets.Tests.csproj --filter "Category=Unit"
 
 # End-to-end tests (requires GITHUB_TOKEN and CLI on PATH)
-dotnet test tests/CopilotPS.Tests.csproj --filter "Category=EndToEnd"
+dotnet test tests/CopilotCmdlets.Tests.csproj --filter "Category=EndToEnd"
 
 # All tests
-dotnet test tests/CopilotPS.Tests.csproj
+dotnet test tests/CopilotCmdlets.Tests.csproj
 ```
 
 ## License

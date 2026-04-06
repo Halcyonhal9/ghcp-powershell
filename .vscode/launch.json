@@ -16,7 +16,7 @@
       "args": [
         "-NoExit",
         "-Command",
-        "Import-Module ${workspaceFolder}/out/CopilotPS.psd1"
+        "Import-Module ${workspaceFolder}/out/CopilotCmdlets.psd1"
       ],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
@@ -30,7 +30,7 @@
       "program": "dotnet",
       "args": [
         "test",
-        "${workspaceFolder}/tests/CopilotPS.Tests.csproj",
+        "${workspaceFolder}/tests/CopilotCmdlets.Tests.csproj",
         "--filter",
         "Category=Unit",
         "--no-build"
@@ -46,7 +46,7 @@
       "program": "dotnet",
       "args": [
         "test",
-        "${workspaceFolder}/tests/CopilotPS.Tests.csproj",
+        "${workspaceFolder}/tests/CopilotCmdlets.Tests.csproj",
         "--filter",
         "Category=EndToEnd",
         "--no-build"

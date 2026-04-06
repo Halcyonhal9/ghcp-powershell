@@ -83,7 +83,7 @@ Look for patterns that hide errors:
 
 ### 5. Validate Against Project Standards
 
-Ensure compliance with CopilotPS error handling requirements:
+Ensure compliance with CopilotCmdlets error handling requirements:
 - Cmdlets should use `WriteError()` for non-terminating errors and `ThrowTerminatingError()` for fatal ones
 - `ModuleState` cleanup must handle errors gracefully (IModuleAssemblyCleanup)
 - SDK exceptions should be caught specifically (not bare `catch (Exception)`)

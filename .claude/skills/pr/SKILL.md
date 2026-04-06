@@ -145,8 +145,8 @@ Fill in the actual values captured from each subagent's `<usage>` block. The mai
 After the summary, confirm the module builds and tests pass:
 
 ```bash
-dotnet publish src/CopilotPS.csproj -c Release -o out
-dotnet test tests/CopilotPS.Tests.csproj --filter "Category=Unit"
+dotnet publish src/CopilotCmdlets.csproj -c Release -o out
+dotnet test tests/CopilotCmdlets.Tests.csproj --filter "Category=Unit"
 ```
 
 Report any failures. If everything passes, note it in the summary.

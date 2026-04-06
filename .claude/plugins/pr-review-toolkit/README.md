@@ -6,7 +6,7 @@ A comprehensive collection of specialized agents for thorough pull request revie
 
 This plugin bundles 6 expert review agents that each focus on a specific aspect of code quality. Use them individually for targeted reviews or together for comprehensive PR analysis.
 
-**Project context**: CopilotPS is a thin C# binary PowerShell module wrapping the `GitHub.Copilot.SDK` NuGet package. All agents should evaluate code against this principle — cmdlets must be pass-through wrappers with no custom business logic.
+**Project context**: CopilotCmdlets is a thin C# binary PowerShell module wrapping the `GitHub.Copilot.SDK` NuGet package. All agents should evaluate code against this principle — cmdlets must be pass-through wrappers with no custom business logic.
 
 ## Agents
 

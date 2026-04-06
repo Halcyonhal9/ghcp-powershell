@@ -32,7 +32,7 @@ For every root comment:
 
 After all changes, run the test suite:
 ```
-dotnet test tests/CopilotPS.Tests.csproj --filter "Category=Unit" -x -q
+dotnet test tests/CopilotCmdlets.Tests.csproj --filter "Category=Unit" -x -q
 ```
 All tests must pass before proceeding.
 

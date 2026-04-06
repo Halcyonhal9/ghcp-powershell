@@ -4,7 +4,7 @@ using Xunit;
 
 using CopilotCmdlets;
 
-namespace CopilotPS.Tests.EndToEnd;
+namespace CopilotCmdlets.Tests.EndToEnd;
 
 [Trait("Category", "EndToEnd")]
 public class ConversationTests : IAsyncLifetime
@@ -16,7 +16,7 @@ public class ConversationTests : IAsyncLifetime
     {
         ps = PowerShell.Create();
         var modulePath = Path.Combine(
-            AppContext.BaseDirectory, "..", "..", "..", "..", "out", "CopilotPS.psd1");
+            AppContext.BaseDirectory, "..", "..", "..", "..", "out", "CopilotCmdlets.psd1");
         ps.AddCommand("Import-Module").AddParameter("Name", Path.GetFullPath(modulePath));
         ps.Invoke();
         ps.Commands.Clear();

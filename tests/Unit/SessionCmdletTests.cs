@@ -4,7 +4,7 @@ using Xunit;
 
 using CopilotCmdlets;
 
-namespace CopilotPS.Tests.Unit;
+namespace CopilotCmdlets.Tests.Unit;
 
 [Trait("Category", "Unit")]
 public class SessionCmdletTests

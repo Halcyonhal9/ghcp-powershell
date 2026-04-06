@@ -7,7 +7,7 @@
       "type": "process",
       "args": [
         "publish",
-        "${workspaceFolder}/src/CopilotPS.csproj",
+        "${workspaceFolder}/src/CopilotCmdlets.csproj",
         "-c",
         "Release",
         "-o",
@@ -25,7 +25,7 @@
       "type": "process",
       "args": [
         "build",
-        "${workspaceFolder}/tests/CopilotPS.Tests.csproj",
+        "${workspaceFolder}/tests/CopilotCmdlets.Tests.csproj",
         "-c",
         "Debug"
       ],

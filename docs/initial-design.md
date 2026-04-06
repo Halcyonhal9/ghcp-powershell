@@ -1,4 +1,4 @@
-# CopilotPS - PowerShell Wrapper for GitHub Copilot SDK
+# CopilotCmdlets - PowerShell Wrapper for GitHub Copilot SDK
 
 ## 1. Goals
 
@@ -26,12 +26,12 @@ No platform-specific code is required. The Copilot SDK manages CLI process lifec
 
 ```
 src/
-├── CopilotPS.csproj        # Project file
+├── CopilotCmdlets.csproj        # Project file
 ├── ModuleState.cs          # Singleton state + permission/input handlers + module cleanup
 ├── ClientCmdlets.cs        # New-CopilotClient, Stop-CopilotClient, Test-CopilotConnection
 ├── SessionCmdlets.cs       # New/Resume/Get/Remove/Close-CopilotSession
 └── MessageCmdlets.cs       # Send-CopilotMessage, Get-CopilotMessage
-CopilotPS.psd1              # Module manifest (copied to output on build)
+CopilotCmdlets.psd1              # Module manifest (copied to output on build)
 build.ps1                   # Convenience: dotnet publish + tells you the import path
 ```
 
@@ -264,7 +264,7 @@ This is why `CopilotMessageResult` includes `MessageId` from day one — it's th
 
 ### Workspace
 
-Open `CopilotPS.code-workspace` in VS Code. It configures:
+Open `CopilotCmdlets.code-workspace` in VS Code. It configures:
 - Recommended extensions: C# Dev Kit, PowerShell
 - `bin`/`obj`/`out` excluded from file tree and search
 - Format-on-save enabled
@@ -289,15 +289,15 @@ Open `CopilotPS.code-workspace` in VS Code. It configures:
 
 ```powershell
 #!/usr/bin/env pwsh
-dotnet publish src/CopilotPS.csproj -c Release -o out
-Write-Host "Import with: Import-Module ./out/CopilotPS.psd1"
+dotnet publish src/CopilotCmdlets.csproj -c Release -o out
+Write-Host "Import with: Import-Module ./out/CopilotCmdlets.psd1"
 ```
 
-### CopilotPS.psd1 (module manifest)
+### CopilotCmdlets.psd1 (module manifest)
 
 ```powershell
 @{
-    RootModule        = 'CopilotPS.dll'
+    RootModule        = 'CopilotCmdlets.dll'
     ModuleVersion     = '0.1.0'
     GUID              = '<generated>'
     Author            = 'GitHub'
@@ -325,7 +325,7 @@ Write-Host "Import with: Import-Module ./out/CopilotPS.psd1"
 ### Example Usage
 
 ```powershell
-Import-Module ./out/CopilotPS.psd1
+Import-Module ./out/CopilotCmdlets.psd1
 
 # Connect
 New-CopilotClient
@@ -375,8 +375,8 @@ Stop-CopilotClient
 **Goal:** Build the project, connect to the Copilot CLI, and verify the round-trip works.
 
 **Deliverables:**
-- `CopilotPS.csproj` with SDK and PowerShell references
-- `CopilotPS.psd1` module manifest (export only Phase 1 cmdlets initially)
+- `CopilotCmdlets.csproj` with SDK and PowerShell references
+- `CopilotCmdlets.psd1` module manifest (export only Phase 1 cmdlets initially)
 - `ModuleState.cs` — static singleton with `client` field, `RequireClient()`, and `IModuleAssemblyCleanup`
 - `ClientCmdlets.cs` — `New-CopilotClient`, `Stop-CopilotClient`, `Test-CopilotConnection`
 - `build.ps1`
@@ -432,7 +432,7 @@ Stop-CopilotClient
 
 ```
 tests/
-├── CopilotPS.Tests.csproj          # xUnit test project, references src/CopilotPS.csproj
+├── CopilotCmdlets.Tests.csproj          # xUnit test project, references src/CopilotCmdlets.csproj
 ├── Unit/
 │   ├── ModuleStateTests.cs          # RequireClient/RequireSession null-handling, cleanup
 │   ├── ClientCmdletTests.cs         # Parameter binding, state side-effects
@@ -465,7 +465,7 @@ Unit tests validate cmdlet logic **without** a running Copilot CLI process.
 
 **Running unit tests:**
 ```bash
-dotnet test tests/CopilotPS.Tests.csproj --filter "Category=Unit"
+dotnet test tests/CopilotCmdlets.Tests.csproj --filter "Category=Unit"
 ```
 
 ### End-to-End Tests
@@ -496,7 +496,7 @@ End-to-end tests exercise the **real SDK against a running Copilot CLI** process
 **Running end-to-end tests:**
 ```bash
 # Requires GITHUB_TOKEN and CLI on PATH
-dotnet test tests/CopilotPS.Tests.csproj --filter "Category=EndToEnd"
+dotnet test tests/CopilotCmdlets.Tests.csproj --filter "Category=EndToEnd"
 ```
 
 ### CI Integration
@@ -509,7 +509,7 @@ test-unit:
     - uses: actions/checkout@v4
     - uses: actions/setup-dotnet@v4
       with: { dotnet-version: '9.0.x' }
-    - run: dotnet test tests/CopilotPS.Tests.csproj --filter "Category=Unit"
+    - run: dotnet test tests/CopilotCmdlets.Tests.csproj --filter "Category=Unit"
 
 test-e2e:
   runs-on: ubuntu-latest
@@ -519,7 +519,7 @@ test-e2e:
     - uses: actions/checkout@v4
     - uses: actions/setup-dotnet@v4
       with: { dotnet-version: '9.0.x' }
-    - run: dotnet test tests/CopilotPS.Tests.csproj --filter "Category=EndToEnd"
+    - run: dotnet test tests/CopilotCmdlets.Tests.csproj --filter "Category=EndToEnd"
       env:
         GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
 ```
@@ -534,5 +534,5 @@ Unit tests run on every PR. End-to-end tests run on pushes to `main` (or manuall
 | `ClientCmdlets.cs` | `NewCopilotClientCmdlet`, `StopCopilotClientCmdlet`, `TestCopilotConnectionCmdlet` | ~70 |
 | `SessionCmdlets.cs` | `NewCopilotSessionCmdlet`, `ResumeCopilotSessionCmdlet`, `GetCopilotSessionCmdlet`, `RemoveCopilotSessionCmdlet`, `CloseCopilotSessionCmdlet` | ~120 |
 | `MessageCmdlets.cs` | `SendCopilotMessageCmdlet`, `GetCopilotMessageCmdlet`, `CopilotMessageResult` | ~100 |
-| `CopilotPS.csproj` | Project file | ~20 |
+| `CopilotCmdlets.csproj` | Project file | ~20 |
 | **Total** | | **~390** |
