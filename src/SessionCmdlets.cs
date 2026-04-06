@@ -21,6 +21,7 @@ public sealed class NewCopilotSessionCmdlet : PSCmdlet
     public string? SystemMessage { get; set; }
 
     [Parameter]
+    [ArgumentCompleter(typeof(ReasoningEffortCompleter))]
     public string? ReasoningEffort { get; set; }
 
     [Parameter]
@@ -82,6 +83,7 @@ public sealed class NewCopilotSessionCmdlet : PSCmdlet
 public sealed class ResumeCopilotSessionCmdlet : PSCmdlet
 {
     [Parameter(Mandatory = true, Position = 0)]
+    [ArgumentCompleter(typeof(CopilotSessionCompleter))]
     public string SessionId { get; set; } = null!;
 
     [Parameter]
@@ -98,6 +100,7 @@ public sealed class ResumeCopilotSessionCmdlet : PSCmdlet
     public string? SystemMessage { get; set; }
 
     [Parameter]
+    [ArgumentCompleter(typeof(ReasoningEffortCompleter))]
     public string? ReasoningEffort { get; set; }
 
     [Parameter]
@@ -171,6 +174,7 @@ public sealed class GetCopilotSessionCmdlet : PSCmdlet
 public sealed class RemoveCopilotSessionCmdlet : PSCmdlet
 {
     [Parameter(Mandatory = true, Position = 0)]
+    [ArgumentCompleter(typeof(CopilotSessionCompleter))]
     public string SessionId { get; set; } = null!;
 
     [Parameter]
