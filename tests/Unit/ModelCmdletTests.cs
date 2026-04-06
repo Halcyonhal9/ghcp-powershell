@@ -46,14 +46,21 @@ public class ModelCmdletTests
     [Fact]
     public void CopilotModelCompleter_ReturnsEmptyWhenNoClient()
     {
-        // Ensure no client is set
-        ModuleState.Client = null;
+        var original = ModuleState.Client;
+        try
+        {
+            ModuleState.Client = null;
 
-        var completer = new CopilotModelCompleter();
-        var results = completer.CompleteArgument(
-            "New-CopilotSession", "Model", "", null!, new System.Collections.Hashtable());
+            var completer = new CopilotModelCompleter();
+            var results = completer.CompleteArgument(
+                "New-CopilotSession", "Model", "", null!, new System.Collections.Hashtable());
 
-        Assert.Empty(results);
+            Assert.Empty(results);
+        }
+        finally
+        {
+            ModuleState.Client = original;
+        }
     }
 
     [Fact]

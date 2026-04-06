@@ -57,8 +57,9 @@ public sealed class CopilotModelCompleter : IArgumentCompleter
             models = client.ListModelsAsync(CancellationToken.None)
                 .GetAwaiter().GetResult();
         }
-        catch
+        catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"Model completion failed: {ex.Message}");
             yield break;
         }
 
