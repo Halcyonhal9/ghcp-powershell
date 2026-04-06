@@ -28,7 +28,21 @@ public sealed class NewCopilotClientCmdlet : PSCmdlet
         };
 
         if (GitHubToken is not null) options.GitHubToken = GitHubToken;
-        if (CliPath is not null) options.CliPath = CliPath;
+        if (CliPath is not null)
+        {
+            options.CliPath = CliPath;
+        }
+        else
+        {
+            var asmDir = Path.GetDirectoryName(typeof(NewCopilotClientCmdlet).Assembly.Location);
+            if (asmDir is not null)
+            {
+                var rid = System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier;
+                var candidate = Path.Combine(asmDir, "runtimes", rid, "native", "copilot" + (OperatingSystem.IsWindows() ? ".exe" : ""));
+                if (File.Exists(candidate))
+                    options.CliPath = candidate;
+            }
+        }
         if (CliUrl is not null)
         {
             options.CliUrl = CliUrl;
