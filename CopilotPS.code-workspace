@@ -1,0 +1,40 @@
+{
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    "dotnet.defaultSolution": "disable",
+    "editor.formatOnSave": true,
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true,
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    "omnisharp.enableRoslynAnalyzers": true,
+    "omnisharp.enableEditorConfigSupport": true,
+    "[csharp]": {
+      "editor.defaultFormatter": "ms-dotnettools.csharp"
+    },
+    "[powershell]": {
+      "editor.defaultFormatter": "ms-vscode.powershell"
+    },
+    "files.exclude": {
+      "**/bin": true,
+      "**/obj": true,
+      "out": true
+    },
+    "search.exclude": {
+      "**/bin": true,
+      "**/obj": true,
+      "out": true
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-dotnettools.csharp",
+      "ms-dotnettools.csdevkit",
+      "ms-vscode.powershell"
+    ]
+  }
+}

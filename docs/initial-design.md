@@ -260,7 +260,30 @@ This is why `CopilotMessageResult` includes `MessageId` from day one — it's th
 
 **No changes to the current cmdlet signatures are needed** — `-NoWait` is additive.
 
-## 8. Build & Usage
+## 8. Development Environment (VS Code)
+
+### Workspace
+
+Open `CopilotPS.code-workspace` in VS Code. It configures:
+- Recommended extensions: C# Dev Kit, PowerShell
+- `bin`/`obj`/`out` excluded from file tree and search
+- Format-on-save enabled
+
+### Debug Configurations (`.vscode/launch.json`)
+
+| Configuration | What it does |
+|---------------|-------------|
+| **Launch pwsh with Module** | Builds the module, then opens a `pwsh` session with it pre-imported. Set breakpoints in C# and step through cmdlet execution. |
+| **Attach to pwsh** | Attach the debugger to an already-running `pwsh` process. |
+| **Run Unit Tests** | Builds and runs unit tests with the debugger attached. |
+| **Run End-to-End Tests** | Builds and runs e2e tests (requires `GITHUB_TOKEN`). |
+
+### Build Tasks (`.vscode/tasks.json`)
+
+- **build** (default, Ctrl+Shift+B): `dotnet publish` to `out/`
+- **build-tests**: `dotnet build` the test project
+
+## 9. Build & Usage
 
 ### build.ps1
 
@@ -333,7 +356,7 @@ Remove-CopilotSession -SessionId "my-review"
 Stop-CopilotClient
 ```
 
-## 9. What's NOT in Scope (v1)
+## 10. What's NOT in Scope (v1)
 
 | Feature | Why deferred |
 |---------|-------------|
@@ -345,7 +368,7 @@ Stop-CopilotClient
 | Tab completion | Argument completers for `-Model`, `-SessionId` etc. Nice-to-have, add later. |
 | Format/type data (.ps1xml) | Custom formatting for `SessionMetadata`, `CopilotMessageResult`. Polish item. |
 
-## 10. Implementation Phases
+## 11. Implementation Phases
 
 ### Phase 1 — Project Skeleton & Client Lifecycle
 
@@ -403,7 +426,7 @@ Stop-CopilotClient
 
 ---
 
-## 11. Testing Strategy
+## 12. Testing Strategy
 
 ### Project Layout
 
@@ -503,7 +526,7 @@ test-e2e:
 
 Unit tests run on every PR. End-to-end tests run on pushes to `main` (or manually) since they require secrets and network access.
 
-## 12. File Inventory (5 C# files)
+## 13. File Inventory (5 C# files)
 
 | File | Contents | Approximate lines |
 |------|----------|-------------------|
