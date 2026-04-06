@@ -26,12 +26,12 @@ No platform-specific code is required. The Copilot SDK manages CLI process lifec
 
 ```
 src/
-├── CopilotCmdlets.csproj        # Project file
+├── CopilotCmdlets.csproj   # Project file
 ├── ModuleState.cs          # Singleton state + permission/input handlers + module cleanup
 ├── ClientCmdlets.cs        # New-CopilotClient, Stop-CopilotClient, Test-CopilotConnection
 ├── SessionCmdlets.cs       # New/Resume/Get/Remove/Close-CopilotSession
 └── MessageCmdlets.cs       # Send-CopilotMessage, Get-CopilotMessage
-CopilotCmdlets.psd1              # Module manifest (copied to output on build)
+CopilotCmdlets.psd1         # Module manifest (copied to output on build)
 build.ps1                   # Convenience: dotnet publish + tells you the import path
 ```
 
@@ -432,7 +432,7 @@ Stop-CopilotClient
 
 ```
 tests/
-├── CopilotCmdlets.Tests.csproj          # xUnit test project, references src/CopilotCmdlets.csproj
+├── CopilotCmdlets.Tests.csproj  # xUnit test project, references src/CopilotCmdlets.csproj
 ├── Unit/
 │   ├── ModuleStateTests.cs          # RequireClient/RequireSession null-handling, cleanup
 │   ├── ClientCmdletTests.cs         # Parameter binding, state side-effects

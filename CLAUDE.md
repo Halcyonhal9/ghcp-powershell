@@ -18,6 +18,7 @@
 - `ModuleState` is the only singleton. Cmdlets are stateless beyond what `ModuleState` holds.
 - Cmdlets accept explicit `-Client` / `-Session` parameters; fall back to `ModuleState` defaults.
 - No custom abstractions unless required for testability (e.g., thin interface wrappers around sealed SDK types).
+- C# `RootNamespace` is `CopilotCmdlets` — use `using CopilotCmdlets;` in test files.
 
 ## Testing
 
