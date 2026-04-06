@@ -3,11 +3,19 @@ using GitHub.Copilot.SDK;
 
 namespace CopilotPS;
 
+/// <summary>Structured result returned by Send-CopilotMessage after the session goes idle.</summary>
 public class CopilotMessageResult
 {
+    /// <summary>The SDK-assigned message identifier (correlation key for future async patterns).</summary>
     public string? MessageId { get; set; }
+
+    /// <summary>Full accumulated assistant response text.</summary>
     public string Content { get; set; } = string.Empty;
+
+    /// <summary>The session that produced this result.</summary>
     public string? SessionId { get; set; }
+
+    /// <summary>All SDK events received during this send (deltas, tool calls, idle, errors, etc.).</summary>
     public List<SessionEvent> Events { get; set; } = new();
 }
 
@@ -36,7 +44,7 @@ public sealed class SendCopilotMessageCmdlet : PSCmdlet
             SessionId = target.SessionId
         };
 
-        var idleSignal = new ManualResetEventSlim(false);
+        using var idleSignal = new ManualResetEventSlim(false);
         Exception? sessionError = null;
 
         var subscription = target.On(new SessionEventHandler(sessionEvent =>
@@ -69,8 +77,8 @@ public sealed class SendCopilotMessageCmdlet : PSCmdlet
                     break;
 
                 case SessionErrorEvent error:
-                    sessionError = new Exception(
-                        $"Session error ({error.Data.ErrorType}): {error.Data.Message}");
+                    Volatile.Write(ref sessionError, new Exception(
+                        $"Session error ({error.Data.ErrorType}): {error.Data.Message}"));
                     idleSignal.Set();
                     break;
             }
@@ -102,10 +110,11 @@ public sealed class SendCopilotMessageCmdlet : PSCmdlet
                 return;
             }
 
-            if (sessionError is not null)
+            var error = Volatile.Read(ref sessionError);
+            if (error is not null)
             {
                 ThrowTerminatingError(new ErrorRecord(
-                    sessionError, "SessionError", ErrorCategory.InvalidResult, null));
+                    error, "SessionError", ErrorCategory.InvalidResult, null));
                 return;
             }
 

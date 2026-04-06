@@ -48,6 +48,11 @@ public sealed class NewCopilotClientCmdlet : PSCmdlet
             return;
         }
 
+        if (ModuleState.Client is not null)
+        {
+            WriteWarning("Replacing existing Copilot client. The previous client is still running; use Stop-CopilotClient to clean it up.");
+        }
+
         ModuleState.Client = client;
         WriteObject(client);
     }

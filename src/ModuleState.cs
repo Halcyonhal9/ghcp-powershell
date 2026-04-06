@@ -5,8 +5,20 @@ namespace CopilotPS;
 
 internal static class ModuleState
 {
-    internal static CopilotClient? Client { get; set; }
-    internal static CopilotSession? CurrentSession { get; set; }
+    private static volatile CopilotClient? _client;
+    private static volatile CopilotSession? _currentSession;
+
+    internal static CopilotClient? Client
+    {
+        get => _client;
+        set => _client = value;
+    }
+
+    internal static CopilotSession? CurrentSession
+    {
+        get => _currentSession;
+        set => _currentSession = value;
+    }
 
     internal static CopilotClient RequireClient(CopilotClient? explicitClient)
     {
@@ -24,14 +36,14 @@ internal static class ModuleState
     {
         if (CurrentSession is not null)
         {
-            await CurrentSession.DisposeAsync();
+            try { await CurrentSession.DisposeAsync(); } catch { }
             CurrentSession = null;
         }
 
         if (Client is not null)
         {
-            await Client.StopAsync();
-            Client.Dispose();
+            try { await Client.StopAsync(); } catch { }
+            try { Client.Dispose(); } catch { }
             Client = null;
         }
     }
