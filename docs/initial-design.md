@@ -345,7 +345,165 @@ Stop-CopilotClient
 | Tab completion | Argument completers for `-Model`, `-SessionId` etc. Nice-to-have, add later. |
 | Format/type data (.ps1xml) | Custom formatting for `SessionMetadata`, `CopilotMessageResult`. Polish item. |
 
-## 10. File Inventory (5 C# files)
+## 10. Implementation Phases
+
+### Phase 1 — Project Skeleton & Client Lifecycle
+
+**Goal:** Build the project, connect to the Copilot CLI, and verify the round-trip works.
+
+**Deliverables:**
+- `CopilotPS.csproj` with SDK and PowerShell references
+- `CopilotPS.psd1` module manifest (export only Phase 1 cmdlets initially)
+- `ModuleState.cs` — static singleton with `client` field, `RequireClient()`, and `IModuleAssemblyCleanup`
+- `ClientCmdlets.cs` — `New-CopilotClient`, `Stop-CopilotClient`, `Test-CopilotConnection`
+- `build.ps1`
+
+**Exit criteria:** `New-CopilotClient | Test-CopilotConnection` succeeds against a running CLI; `Stop-CopilotClient` shuts it down cleanly; unit tests for Phase 1 pass.
+
+---
+
+### Phase 2 — Session Lifecycle
+
+**Goal:** Create, list, resume, close, and delete sessions.
+
+**Deliverables:**
+- `SessionCmdlets.cs` — `New-CopilotSession`, `Resume-CopilotSession`, `Get-CopilotSession`, `Remove-CopilotSession`, `Close-CopilotSession`
+- Extend `ModuleState` with `currentSession`, `RequireSession()`, permission handlers, and user-input handlers
+- Update manifest to export session cmdlets
+
+**Exit criteria:** Full session round-trip (create → list → close → resume → delete) works; interactive and auto-approve permission modes work; unit tests for Phase 2 pass.
+
+---
+
+### Phase 3 — Messaging & Streaming
+
+**Goal:** Send messages, stream output, and retrieve history.
+
+**Deliverables:**
+- `MessageCmdlets.cs` — `Send-CopilotMessage`, `Get-CopilotMessage`, `CopilotMessageResult` POCO
+- Event handler wiring (deltas → `Console.Write`, tool events → `Console.Error`, idle/error → signal)
+- Update manifest to export all cmdlets
+
+**Exit criteria:** `Send-CopilotMessage` streams to terminal and returns a structured `CopilotMessageResult`; `Get-CopilotMessage` returns history; end-to-end test of a full conversation passes.
+
+---
+
+### Phase 4 — Polish & Hardening
+
+**Goal:** Production-ready quality, CI green, documentation.
+
+**Deliverables:**
+- Timeout handling and cancellation support in `Send-CopilotMessage`
+- Error paths: missing client, missing session, SDK exceptions surfaced as `ErrorRecord`
+- `-WhatIf`/`-Confirm` support on `Remove-CopilotSession` and `Stop-CopilotClient`
+- README with quickstart
+- All unit and end-to-end tests passing in CI
+
+**Exit criteria:** No known defects; CI pipeline runs unit tests and (optionally) end-to-end tests; module installs cleanly from build output.
+
+---
+
+## 11. Testing Strategy
+
+### Project Layout
+
+```
+tests/
+├── CopilotPS.Tests.csproj          # xUnit test project, references src/CopilotPS.csproj
+├── Unit/
+│   ├── ModuleStateTests.cs          # RequireClient/RequireSession null-handling, cleanup
+│   ├── ClientCmdletTests.cs         # Parameter binding, state side-effects
+│   ├── SessionCmdletTests.cs        # Parameter binding, handler selection, state side-effects
+│   └── MessageCmdletTests.cs        # Result construction, event accumulation
+└── EndToEnd/
+    ├── ClientLifecycleTests.cs      # Start → ping → stop against real CLI
+    ├── SessionLifecycleTests.cs     # Create → list → close → resume → delete
+    └── ConversationTests.cs         # Send message → stream → get history
+```
+
+### Unit Tests
+
+Unit tests validate cmdlet logic **without** a running Copilot CLI process.
+
+**Approach — Interface-based mocking:**
+- The Copilot SDK types (`CopilotClient`, `CopilotSession`) are injected into cmdlets via the `-Client` / `-Session` parameters or via `ModuleState`.
+- Where SDK types are concrete classes without interfaces, use a thin internal adapter or wrap behind a minimal interface (e.g., `ICopilotClientWrapper`) that can be substituted in tests. Keep adapters trivial — no logic, just delegation.
+- Use **xUnit** as the test framework and **NSubstitute** (or Moq) for mocking.
+
+**What unit tests cover:**
+| Area | Examples |
+|------|----------|
+| `ModuleState` | `RequireClient()` throws when no client set; cleanup disposes both session and client; setting a new client replaces the old one |
+| Parameter defaults | `-LogLevel` defaults to `"info"`; `-Timeout` defaults to 5 minutes |
+| Permission handler selection | `-AutoApprove` produces approve-all handler; default produces interactive handler |
+| `CopilotMessageResult` construction | Events are accumulated correctly; `Content` is assembled from delta events |
+| Error handling | Missing client/session produces the correct `ErrorRecord`; SDK exceptions are wrapped properly |
+| `ShouldProcess` | `Remove-CopilotSession` respects `-WhatIf` (no delete call made) |
+
+**Running unit tests:**
+```bash
+dotnet test tests/CopilotPS.Tests.csproj --filter "Category=Unit"
+```
+
+### End-to-End Tests
+
+End-to-end tests exercise the **real SDK against a running Copilot CLI** process.
+
+**Prerequisites:**
+- A valid GitHub token with Copilot access (set via `GITHUB_TOKEN` env var)
+- The `github-copilot` CLI binary available on `PATH` (or specify via `COPILOT_CLI_PATH`)
+- Network access to GitHub
+
+**Approach:**
+- Tests use `PowerShell.Create()` from `System.Management.Automation` to invoke cmdlets in-process, simulating real PowerShell pipeline execution.
+- Each test class manages its own client lifecycle (`New-CopilotClient` in setup, `Stop-CopilotClient` in teardown).
+- Session tests create disposable sessions with unique IDs and clean up via `Remove-CopilotSession` in teardown.
+- Tests are marked with `[Trait("Category", "EndToEnd")]` so they can be skipped in environments without credentials.
+
+**What end-to-end tests cover:**
+| Area | Examples |
+|------|----------|
+| Client lifecycle | Start client → ping → stop; force-stop |
+| Session lifecycle | Create session → list (verify present) → close → resume → delete → list (verify absent) |
+| Messaging | Send a simple prompt → verify `CopilotMessageResult.Content` is non-empty; verify `Events` contains expected event types |
+| Streaming | Send a prompt → verify delta events were emitted (captured via test event handler) |
+| Permission flow | Create session with `-AutoApprove` → send a tool-using prompt → verify no interactive prompt blocks |
+| Error cases | Send to a disposed session → verify error; resume a non-existent session → verify error |
+
+**Running end-to-end tests:**
+```bash
+# Requires GITHUB_TOKEN and CLI on PATH
+dotnet test tests/CopilotPS.Tests.csproj --filter "Category=EndToEnd"
+```
+
+### CI Integration
+
+```yaml
+# Suggested GitHub Actions job structure
+test-unit:
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-dotnet@v4
+      with: { dotnet-version: '9.0.x' }
+    - run: dotnet test tests/CopilotPS.Tests.csproj --filter "Category=Unit"
+
+test-e2e:
+  runs-on: ubuntu-latest
+  if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  environment: copilot-testing
+  steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-dotnet@v4
+      with: { dotnet-version: '9.0.x' }
+    - run: dotnet test tests/CopilotPS.Tests.csproj --filter "Category=EndToEnd"
+      env:
+        GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+```
+
+Unit tests run on every PR. End-to-end tests run on pushes to `main` (or manually) since they require secrets and network access.
+
+## 12. File Inventory (5 C# files)
 
 | File | Contents | Approximate lines |
 |------|----------|-------------------|
