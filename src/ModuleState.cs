@@ -32,26 +32,60 @@ internal static class ModuleState
             "No Copilot session available. Run New-CopilotSession first, or pass -Session explicitly.");
     }
 
+    internal static bool TryRequireClient(CopilotClient? explicitClient, out CopilotClient client, out ErrorRecord? error)
+    {
+        try
+        {
+            client = RequireClient(explicitClient);
+            error = null;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            client = null!;
+            error = new ErrorRecord(ex, "NoClient", ErrorCategory.InvalidOperation, null);
+            return false;
+        }
+    }
+
+    internal static bool TryRequireSession(CopilotSession? explicitSession, out CopilotSession session, out ErrorRecord? error)
+    {
+        try
+        {
+            session = RequireSession(explicitSession);
+            error = null;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            session = null!;
+            error = new ErrorRecord(ex, "NoSession", ErrorCategory.InvalidOperation, null);
+            return false;
+        }
+    }
+
     internal static async Task CleanupAsync()
     {
-        if (CurrentSession is not null)
+        var session = CurrentSession;
+        if (session is not null)
         {
-            try { await CurrentSession.DisposeAsync(); } catch { }
             CurrentSession = null;
+            try { await session.DisposeAsync(); } catch { }
         }
 
-        if (Client is not null)
+        var client = Client;
+        if (client is not null)
         {
-            try { await Client.StopAsync(); } catch { }
-            try { Client.Dispose(); } catch { }
             Client = null;
+            try { await client.StopAsync(); } catch { }
+            try { client.Dispose(); } catch { }
         }
     }
 }
 
 internal static class PermissionHandlers
 {
-    internal static PermissionRequestHandler Interactive => (request, invocation) =>
+    internal static readonly PermissionRequestHandler Interactive = (request, invocation) =>
     {
         var originalColor = Console.ForegroundColor;
         Console.ForegroundColor = ConsoleColor.Yellow;
@@ -76,7 +110,7 @@ internal static class PermissionHandlers
         });
     };
 
-    internal static PermissionRequestHandler AutoApprove => (request, invocation) =>
+    internal static readonly PermissionRequestHandler AutoApprove = (request, invocation) =>
         Task.FromResult(new PermissionRequestResult
         {
             Kind = new PermissionRequestResultKind("approve")
@@ -85,7 +119,7 @@ internal static class PermissionHandlers
 
 internal static class UserInputHandlers
 {
-    internal static UserInputHandler Interactive => (request, invocation) =>
+    internal static readonly UserInputHandler Interactive = (request, invocation) =>
     {
         Console.Error.WriteLine($"[Input] {request.Question}");
 
@@ -103,7 +137,7 @@ internal static class UserInputHandlers
         return Task.FromResult(new UserInputResponse
         {
             Answer = answer,
-            WasFreeform = request.Choices is null || request.Choices.Count == 0
+            WasFreeform = request.Choices is not { Count: > 0 }
         });
     };
 }

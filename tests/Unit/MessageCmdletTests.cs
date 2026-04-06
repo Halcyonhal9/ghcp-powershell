@@ -102,4 +102,29 @@ public class MessageCmdletTests
 
         Assert.Equal(2, result.Events.Count);
     }
+
+    [Fact]
+    public void SendCopilotMessage_StopProcessingCancelsCts()
+    {
+        var cmdlet = new SendCopilotMessageCmdlet();
+
+        // Trigger EndProcessing to initialize _cts, but it will throw because no session exists.
+        // Instead, invoke StopProcessing via reflection and verify the _cts field behavior.
+        // First call StopProcessing before EndProcessing — should not throw (null-safe).
+        var stopMethod = typeof(SendCopilotMessageCmdlet).GetMethod(
+            "StopProcessing",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+        stopMethod.Invoke(cmdlet, null); // _cts is null — should be safe
+
+        // Now set _cts via reflection to simulate mid-EndProcessing state
+        var ctsField = typeof(SendCopilotMessageCmdlet).GetField(
+            "_cts",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+        var cts = new CancellationTokenSource();
+        ctsField.SetValue(cmdlet, cts);
+
+        Assert.False(cts.IsCancellationRequested);
+        stopMethod.Invoke(cmdlet, null);
+        Assert.True(cts.IsCancellationRequested);
+    }
 }

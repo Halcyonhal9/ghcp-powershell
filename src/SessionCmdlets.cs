@@ -39,7 +39,11 @@ public sealed class NewCopilotSessionCmdlet : PSCmdlet
 
     protected override void EndProcessing()
     {
-        var target = ModuleState.RequireClient(Client);
+        if (!ModuleState.TryRequireClient(Client, out var target, out var noClient))
+        {
+            ThrowTerminatingError(noClient!);
+            return;
+        }
 
         var config = new SessionConfig
         {
@@ -99,7 +103,11 @@ public sealed class ResumeCopilotSessionCmdlet : PSCmdlet
 
     protected override void EndProcessing()
     {
-        var target = ModuleState.RequireClient(Client);
+        if (!ModuleState.TryRequireClient(Client, out var target, out var noClient))
+        {
+            ThrowTerminatingError(noClient!);
+            return;
+        }
 
         var config = new ResumeSessionConfig
         {
@@ -137,7 +145,11 @@ public sealed class GetCopilotSessionCmdlet : PSCmdlet
 
     protected override void EndProcessing()
     {
-        var target = ModuleState.RequireClient(Client);
+        if (!ModuleState.TryRequireClient(Client, out var target, out var noClient))
+        {
+            ThrowTerminatingError(noClient!);
+            return;
+        }
 
         try
         {
@@ -164,7 +176,11 @@ public sealed class RemoveCopilotSessionCmdlet : PSCmdlet
 
     protected override void EndProcessing()
     {
-        var target = ModuleState.RequireClient(Client);
+        if (!ModuleState.TryRequireClient(Client, out var target, out var noClient))
+        {
+            ThrowTerminatingError(noClient!);
+            return;
+        }
 
         if (!ShouldProcess(SessionId, "Delete session"))
             return;
@@ -190,7 +206,11 @@ public sealed class CloseCopilotSessionCmdlet : PSCmdlet
 
     protected override void EndProcessing()
     {
-        var target = ModuleState.RequireSession(Session);
+        if (!ModuleState.TryRequireSession(Session, out var target, out var noSession))
+        {
+            ThrowTerminatingError(noSession!);
+            return;
+        }
 
         try
         {
