@@ -20,22 +20,22 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 2. **Available Review Aspects:**
 
    - **comments** - Analyze code comment accuracy and maintainability
-   - **tests** - Review test coverage quality and completeness
+   - **tests** - Review test coverage quality and completeness (xUnit + NSubstitute)
    - **errors** - Check error handling for silent failures
    - **types** - Analyze type design and invariants (if new types added)
-   - **code** - General code review for project guidelines
+   - **code** - General code review for project guidelines and SDK-wrapper compliance
    - **simplify** - Simplify code for clarity and maintainability
    - **all** - Run all applicable reviews (default)
 
 3. **Identify Changed Files**
    - Run `git diff --name-only` to see modified files
-   - Check if PR already exists: `gh pr view`
+   - Use MCP GitHub tools to check if a PR already exists
    - Identify file types and what reviews apply
 
 4. **Determine Applicable Reviews**
 
    Based on changes:
-   - **Always applicable**: code-reviewer (general quality)
+   - **Always applicable**: code-reviewer (general quality, SDK-wrapper compliance)
    - **If test files changed**: pr-test-analyzer
    - **If comments/docs added**: comment-analyzer
    - **If error handling changed**: silent-failure-hunter
@@ -112,78 +112,9 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 # Launches all agents in parallel
 ```
 
-## Agent Descriptions:
-
-**comment-analyzer**:
-- Verifies comment accuracy vs code
-- Identifies comment rot
-- Checks documentation completeness
-
-**pr-test-analyzer**:
-- Reviews behavioral test coverage
-- Identifies critical gaps
-- Evaluates test quality
-
-**silent-failure-hunter**:
-- Finds silent failures
-- Reviews catch blocks
-- Checks error logging
-
-**type-design-analyzer**:
-- Analyzes type encapsulation
-- Reviews invariant expression
-- Rates type design quality
-
-**code-reviewer**:
-- Checks CLAUDE.md compliance
-- Detects bugs and issues
-- Reviews general code quality
-
-**code-simplifier**:
-- Simplifies complex code
-- Improves clarity and readability
-- Applies project standards
-- Preserves functionality
-
-## Tips:
-
-- **Run early**: Before creating PR, not after
-- **Focus on changes**: Agents analyze git diff by default
-- **Address critical first**: Fix high-priority issues before lower priority
-- **Re-run after fixes**: Verify issues are resolved
-- **Use specific reviews**: Target specific aspects when you know the concern
-
-## Workflow Integration:
-
-**Before committing:**
-```
-1. Write code
-2. Run: /pr-review-toolkit:review-pr code errors
-3. Fix any critical issues
-4. Commit
-```
-
-**Before creating PR:**
-```
-1. Stage all changes
-2. Run: /pr-review-toolkit:review-pr all
-3. Address all critical and important issues
-4. Run specific reviews again to verify
-5. Create PR
-```
-
-**After PR feedback:**
-```
-1. Make requested changes
-2. Run targeted reviews based on feedback
-3. Verify issues are resolved
-4. Push updates
-```
-
 ## Notes:
 
 - Agents run autonomously and return detailed reports
 - Each agent focuses on its specialty for deep analysis
 - Results are actionable with specific file:line references
-- Agents use appropriate models for their complexity
-- All agents available in `/agents` list
+- All agents evaluate against CLAUDE.md conventions and the thin SDK-wrapper principle
