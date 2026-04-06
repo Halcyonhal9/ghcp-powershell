@@ -23,7 +23,7 @@ public class CopilotMessageResult
 [OutputType(typeof(CopilotMessageResult))]
 public sealed class SendCopilotMessageCmdlet : PSCmdlet
 {
-    private readonly CancellationTokenSource _cts = new();
+    private CancellationTokenSource? _cts;
 
     [Parameter(Mandatory = true, Position = 0)]
     public string Prompt { get; set; } = null!;
@@ -39,20 +39,15 @@ public sealed class SendCopilotMessageCmdlet : PSCmdlet
 
     protected override void StopProcessing()
     {
-        _cts.Cancel();
+        _cts?.Cancel();
     }
 
     protected override void EndProcessing()
     {
-        CopilotSession target;
-        try
+        _cts = new CancellationTokenSource();
+        if (!ModuleState.TryRequireSession(Session, out var target, out var noSession))
         {
-            target = ModuleState.RequireSession(Session);
-        }
-        catch (Exception ex)
-        {
-            ThrowTerminatingError(new ErrorRecord(
-                ex, "NoSession", ErrorCategory.InvalidOperation, null));
+            ThrowTerminatingError(noSession!);
             return;
         }
 
@@ -139,9 +134,7 @@ public sealed class SendCopilotMessageCmdlet : PSCmdlet
         }
         catch (OperationCanceledException) when (_cts.IsCancellationRequested)
         {
-            ThrowTerminatingError(new ErrorRecord(
-                new PipelineStoppedException("Send-CopilotMessage was cancelled."),
-                "MessageCancelled", ErrorCategory.OperationStopped, null));
+            throw new PipelineStoppedException();
         }
         finally
         {
@@ -160,15 +153,9 @@ public sealed class GetCopilotMessageCmdlet : PSCmdlet
 
     protected override void EndProcessing()
     {
-        CopilotSession target;
-        try
+        if (!ModuleState.TryRequireSession(Session, out var target, out var noSession))
         {
-            target = ModuleState.RequireSession(Session);
-        }
-        catch (Exception ex)
-        {
-            ThrowTerminatingError(new ErrorRecord(
-                ex, "NoSession", ErrorCategory.InvalidOperation, null));
+            ThrowTerminatingError(noSession!);
             return;
         }
 

@@ -32,6 +32,38 @@ internal static class ModuleState
             "No Copilot session available. Run New-CopilotSession first, or pass -Session explicitly.");
     }
 
+    internal static bool TryRequireClient(CopilotClient? explicitClient, out CopilotClient client, out ErrorRecord? error)
+    {
+        try
+        {
+            client = RequireClient(explicitClient);
+            error = null;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            client = null!;
+            error = new ErrorRecord(ex, "NoClient", ErrorCategory.InvalidOperation, null);
+            return false;
+        }
+    }
+
+    internal static bool TryRequireSession(CopilotSession? explicitSession, out CopilotSession session, out ErrorRecord? error)
+    {
+        try
+        {
+            session = RequireSession(explicitSession);
+            error = null;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            session = null!;
+            error = new ErrorRecord(ex, "NoSession", ErrorCategory.InvalidOperation, null);
+            return false;
+        }
+    }
+
     internal static async Task CleanupAsync()
     {
         var session = CurrentSession;

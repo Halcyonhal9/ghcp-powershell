@@ -4,7 +4,7 @@ PowerShell wrapper for the [GitHub Copilot SDK](https://www.nuget.org/packages/G
 
 ## Requirements
 
-- PowerShell 7.4+ (Core edition)
+- PowerShell 7.6+ (Core edition)
 - .NET 9
 - A GitHub account with Copilot access
 

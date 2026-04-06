@@ -128,6 +128,41 @@ public class ModuleStateTests : IDisposable
     }
 
     [Fact]
+    public void TryRequireClient_ReturnsFalseWithErrorWhenNoClient()
+    {
+        var success = ModuleState.TryRequireClient(null, out var client, out var error);
+        Assert.False(success);
+        Assert.NotNull(error);
+        Assert.Equal("NoClient", error!.FullyQualifiedErrorId);
+    }
+
+    [Fact]
+    public void TryRequireClient_ReturnsTrueWithExplicitClient()
+    {
+        var explicitClient = new CopilotClient(new CopilotClientOptions { AutoStart = false });
+        try
+        {
+            var success = ModuleState.TryRequireClient(explicitClient, out var client, out var error);
+            Assert.True(success);
+            Assert.Null(error);
+            Assert.Same(explicitClient, client);
+        }
+        finally
+        {
+            explicitClient.Dispose();
+        }
+    }
+
+    [Fact]
+    public void TryRequireSession_ReturnsFalseWithErrorWhenNoSession()
+    {
+        var success = ModuleState.TryRequireSession(null, out var session, out var error);
+        Assert.False(success);
+        Assert.NotNull(error);
+        Assert.Equal("NoSession", error!.FullyQualifiedErrorId);
+    }
+
+    [Fact]
     public async Task CleanupAsync_HandlesNullStateGracefully()
     {
         ModuleState.Client = null;

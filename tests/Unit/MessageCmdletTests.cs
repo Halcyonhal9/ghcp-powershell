@@ -104,25 +104,27 @@ public class MessageCmdletTests
     }
 
     [Fact]
-    public void SendCopilotMessage_HasStopProcessingOverride()
+    public void SendCopilotMessage_StopProcessingCancelsCts()
     {
-        // Verify the cmdlet supports cancellation via StopProcessing
-        var method = typeof(SendCopilotMessageCmdlet).GetMethod(
-            "StopProcessing",
-            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-        Assert.NotNull(method);
-        Assert.True(method!.DeclaringType == typeof(SendCopilotMessageCmdlet),
-            "StopProcessing should be overridden in SendCopilotMessageCmdlet");
-    }
+        var cmdlet = new SendCopilotMessageCmdlet();
 
-    [Fact]
-    public void SendCopilotMessage_HasCancellationTokenSourceField()
-    {
-        // Verify the cmdlet has the CancellationTokenSource for cancellation support
-        var field = typeof(SendCopilotMessageCmdlet).GetField(
+        // Trigger EndProcessing to initialize _cts, but it will throw because no session exists.
+        // Instead, invoke StopProcessing via reflection and verify the _cts field behavior.
+        // First call StopProcessing before EndProcessing — should not throw (null-safe).
+        var stopMethod = typeof(SendCopilotMessageCmdlet).GetMethod(
+            "StopProcessing",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+        stopMethod.Invoke(cmdlet, null); // _cts is null — should be safe
+
+        // Now set _cts via reflection to simulate mid-EndProcessing state
+        var ctsField = typeof(SendCopilotMessageCmdlet).GetField(
             "_cts",
-            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-        Assert.NotNull(field);
-        Assert.Equal(typeof(CancellationTokenSource), field!.FieldType);
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+        var cts = new CancellationTokenSource();
+        ctsField.SetValue(cmdlet, cts);
+
+        Assert.False(cts.IsCancellationRequested);
+        stopMethod.Invoke(cmdlet, null);
+        Assert.True(cts.IsCancellationRequested);
     }
 }

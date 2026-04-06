@@ -69,15 +69,9 @@ public sealed class StopCopilotClientCmdlet : PSCmdlet
 
     protected override void EndProcessing()
     {
-        CopilotClient target;
-        try
+        if (!ModuleState.TryRequireClient(Client, out var target, out var noClient))
         {
-            target = ModuleState.RequireClient(Client);
-        }
-        catch (Exception ex)
-        {
-            ThrowTerminatingError(new ErrorRecord(
-                ex, "NoClient", ErrorCategory.InvalidOperation, null));
+            ThrowTerminatingError(noClient!);
             return;
         }
 
@@ -120,15 +114,9 @@ public sealed class TestCopilotConnectionCmdlet : PSCmdlet
 
     protected override void EndProcessing()
     {
-        CopilotClient target;
-        try
+        if (!ModuleState.TryRequireClient(Client, out var target, out var noClient))
         {
-            target = ModuleState.RequireClient(Client);
-        }
-        catch (Exception ex)
-        {
-            ThrowTerminatingError(new ErrorRecord(
-                ex, "NoClient", ErrorCategory.InvalidOperation, null));
+            ThrowTerminatingError(noClient!);
             return;
         }
 
