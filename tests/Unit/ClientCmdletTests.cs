@@ -70,4 +70,22 @@ public class ClientCmdletTests
         var outputType = (OutputTypeAttribute)attrs[0];
         Assert.Contains(outputType.Type, t => t.Type == typeof(PingResponse));
     }
+
+    [Fact]
+    public void StopCopilotClient_HasForceParameter()
+    {
+        var prop = typeof(StopCopilotClientCmdlet).GetProperty("Force")!;
+        Assert.NotNull(prop);
+        Assert.Equal(typeof(SwitchParameter), prop.PropertyType);
+    }
+
+    [Fact]
+    public void NewCopilotClient_HasAllExpectedParameters()
+    {
+        var type = typeof(NewCopilotClientCmdlet);
+        Assert.NotNull(type.GetProperty("GitHubToken"));
+        Assert.NotNull(type.GetProperty("CliPath"));
+        Assert.NotNull(type.GetProperty("CliUrl"));
+        Assert.NotNull(type.GetProperty("LogLevel"));
+    }
 }

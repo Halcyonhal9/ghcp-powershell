@@ -23,6 +23,8 @@ public class CopilotMessageResult
 [OutputType(typeof(CopilotMessageResult))]
 public sealed class SendCopilotMessageCmdlet : PSCmdlet
 {
+    private CancellationTokenSource? _cts;
+
     [Parameter(Mandatory = true, Position = 0)]
     public string Prompt { get; set; } = null!;
 
@@ -35,9 +37,19 @@ public sealed class SendCopilotMessageCmdlet : PSCmdlet
     [Parameter]
     public TimeSpan Timeout { get; set; } = TimeSpan.FromMinutes(5);
 
+    protected override void StopProcessing()
+    {
+        _cts?.Cancel();
+    }
+
     protected override void EndProcessing()
     {
-        var target = ModuleState.RequireSession(Session);
+        _cts = new CancellationTokenSource();
+        if (!ModuleState.TryRequireSession(Session, out var target, out var noSession))
+        {
+            ThrowTerminatingError(noSession!);
+            return;
+        }
 
         var result = new CopilotMessageResult
         {
@@ -100,9 +112,9 @@ public sealed class SendCopilotMessageCmdlet : PSCmdlet
                     .ToList();
             }
 
-            target.SendAsync(options, CancellationToken.None).GetAwaiter().GetResult();
+            target.SendAsync(options, _cts.Token).GetAwaiter().GetResult();
 
-            if (!idleSignal.Wait(Timeout))
+            if (!idleSignal.Wait(Timeout, _cts.Token))
             {
                 ThrowTerminatingError(new ErrorRecord(
                     new TimeoutException($"Send-CopilotMessage timed out after {Timeout}."),
@@ -120,9 +132,14 @@ public sealed class SendCopilotMessageCmdlet : PSCmdlet
 
             WriteObject(result);
         }
+        catch (OperationCanceledException) when (_cts.IsCancellationRequested)
+        {
+            throw new PipelineStoppedException();
+        }
         finally
         {
             subscription.Dispose();
+            _cts.Dispose();
         }
     }
 }
@@ -136,7 +153,11 @@ public sealed class GetCopilotMessageCmdlet : PSCmdlet
 
     protected override void EndProcessing()
     {
-        var target = ModuleState.RequireSession(Session);
+        if (!ModuleState.TryRequireSession(Session, out var target, out var noSession))
+        {
+            ThrowTerminatingError(noSession!);
+            return;
+        }
 
         try
         {

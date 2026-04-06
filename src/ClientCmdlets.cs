@@ -69,7 +69,11 @@ public sealed class StopCopilotClientCmdlet : PSCmdlet
 
     protected override void EndProcessing()
     {
-        var target = ModuleState.RequireClient(Client);
+        if (!ModuleState.TryRequireClient(Client, out var target, out var noClient))
+        {
+            ThrowTerminatingError(noClient!);
+            return;
+        }
 
         if (!ShouldProcess("CopilotClient", Force ? "ForceStop" : "Stop"))
             return;
@@ -110,7 +114,11 @@ public sealed class TestCopilotConnectionCmdlet : PSCmdlet
 
     protected override void EndProcessing()
     {
-        var target = ModuleState.RequireClient(Client);
+        if (!ModuleState.TryRequireClient(Client, out var target, out var noClient))
+        {
+            ThrowTerminatingError(noClient!);
+            return;
+        }
 
         try
         {
