@@ -6,6 +6,8 @@ A comprehensive collection of specialized agents for thorough pull request revie
 
 This plugin bundles 6 expert review agents that each focus on a specific aspect of code quality. Use them individually for targeted reviews or together for comprehensive PR analysis.
 
+**Project context**: CopilotPS is a thin C# binary PowerShell module wrapping the `GitHub.Copilot.SDK` NuGet package. All agents should evaluate code against this principle — cmdlets must be pass-through wrappers with no custom business logic.
+
 ## Agents
 
 ### 1. comment-analyzer
@@ -13,7 +15,7 @@ This plugin bundles 6 expert review agents that each focus on a specific aspect 
 
 **Analyzes:**
 - Comment accuracy vs actual code
-- Documentation completeness
+- XML doc comment completeness
 - Comment rot and technical debt
 - Misleading or outdated comments
 
@@ -34,7 +36,7 @@ This plugin bundles 6 expert review agents that each focus on a specific aspect 
 
 **Analyzes:**
 - Behavioral vs line coverage
-- Critical gaps in test coverage
+- Critical gaps in test coverage (xUnit + NSubstitute)
 - Test quality and resilience
 - Edge cases and error conditions
 
@@ -87,7 +89,7 @@ This plugin bundles 6 expert review agents that each focus on a specific aspect 
 
 **Triggers:**
 ```
-"Review the UserAccount type design"
+"Review the CopilotMessageResult type design"
 "Analyze type design in this PR"
 "Check if this type has strong invariants"
 ```
@@ -97,9 +99,9 @@ This plugin bundles 6 expert review agents that each focus on a specific aspect 
 
 **Analyzes:**
 - CLAUDE.md compliance
-- Style violations
+- Style violations (camelCase locals, PascalCase publics)
 - Bug detection
-- Code quality issues
+- SDK-wrapper principle adherence
 
 **When to use:**
 - After writing or modifying code
@@ -147,10 +149,10 @@ Simply ask questions that match an agent's focus area, and Claude will automatic
 "Can you check if the tests cover all edge cases?"
 → Triggers pr-test-analyzer
 
-"Review the error handling in the API client"
+"Review the error handling in the session cmdlets"
 → Triggers silent-failure-hunter
 
-"I've added documentation - is it accurate?"
+"I've added XML doc comments - are they accurate?"
 → Triggers comment-analyzer
 ```
 
@@ -177,18 +179,6 @@ Claude may proactively use these agents based on context:
 - **After adding docs** → comment-analyzer
 - **Before creating PR** → Multiple agents as appropriate
 - **After adding types** → type-design-analyzer
-
-## Installation
-
-Install from your personal marketplace:
-
-```bash
-/plugins
-# Find "pr-review-toolkit"
-# Install
-```
-
-Or add manually to settings if needed.
 
 ## Agent Details
 
@@ -260,54 +250,11 @@ You can request multiple agents to run in parallel or sequentially:
 - **Iterate**: Run again after fixes to verify
 - **Don't over-use**: Focus on changed code, not entire codebase
 
-## Troubleshooting
+## Recommended Workflow
 
-### Agent Not Triggering
-
-**Issue**: Asked for review but agent didn't run
-
-**Solution**:
-- Be more specific in your request
-- Mention the agent type explicitly
-- Reference the specific concern (e.g., "test coverage")
-
-### Agent Analyzing Wrong Files
-
-**Issue**: Agent reviewing too much or wrong files
-
-**Solution**:
-- Specify which files to focus on
-- Reference the PR number or branch
-- Mention "recent changes" or "git diff"
-
-## Integration with Workflow
-
-This plugin works great with:
-- **build-validator**: Run build/tests before review
-- **Project-specific agents**: Combine with your custom agents
-
-**Recommended workflow:**
 1. Write code → **code-reviewer**
 2. Fix issues → **silent-failure-hunter** (if error handling)
 3. Add tests → **pr-test-analyzer**
 4. Document → **comment-analyzer**
 5. Review passes → **code-simplifier** (polish)
 6. Create PR
-
-## Contributing
-
-Found issues or have suggestions? These agents are maintained in:
-- User agents: `~/.claude/agents/`
-- Project agents: `.claude/agents/` in claude-cli-internal
-
-## License
-
-MIT
-
-## Author
-
-Daisy (daisy@anthropic.com)
-
----
-
-**Quick Start**: Just ask for review and the right agent will trigger automatically!

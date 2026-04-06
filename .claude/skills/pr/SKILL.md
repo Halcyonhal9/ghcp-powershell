@@ -43,7 +43,7 @@ This runs in the current conversation context so it can leverage the full histor
 **This step MUST run in a subagent so that simplification changes are committed as a separate, clean pass.**
 
 Use the Agent tool to spawn a subagent that reviews and simplifies the code changed on this branch. The subagent:
-- Reads `.claude/skills/code-simplifier/SKILL.md` at runtime for its instructions
+- Reads `.claude/plugins/pr-review-toolkit/agents/code-simplifier.md` at runtime for its instructions
 - Focuses only on files changed on the branch relative to `origin/main`
 - Makes direct edits, runs tests, commits, and pushes
 
@@ -56,7 +56,7 @@ Agent tool:
   prompt: |
     You are simplifying code that was changed on this branch before it goes through code review.
 
-    IMPORTANT: Read the file .claude/skills/code-simplifier/SKILL.md for the full
+    IMPORTANT: Read the file .claude/plugins/pr-review-toolkit/agents/code-simplifier.md for the full
     instructions and follow them exactly.
 
     Read CLAUDE.md for project conventions.
@@ -85,7 +85,7 @@ Agent tool:
   subagent_type: general-purpose
   description: "Independent PR code review"
   prompt: |
-    You are performing an independent code review of PR #<PR_NUMBER> on repo Halcyonhal9/lumi2.
+    You are performing an independent code review of PR #<PR_NUMBER> on repo halcyonhal9/ghcp-powershell.
 
     IMPORTANT: Read the file .claude/skills/review-pr/SKILL.md for the full review
     instructions and follow them exactly. The SKILL.md file contains the review
@@ -140,47 +140,16 @@ Token usage:
 
 Fill in the actual values captured from each subagent's `<usage>` block. The main-context steps (create-pr and review-pr-feedback) run inside the orchestrator's conversation, so their tokens are part of the overall conversation usage and cannot be isolated.
 
-### Step 6: Deployment command
+### Step 6: Build verification
 
-After the summary, generate the appropriate deployment command based on which files changed on the branch. Run `git diff origin/main...HEAD --name-only` and apply these rules:
-
-**Determine the target host(s):**
-
-| Changed path pattern | Target | Deploy script |
-|---|---|---|
-| `src/switcher/`, `switcher.yaml`, `deploy/gpu/` | GPU host | `sudo ./deploy/gpu/deploy.sh` |
-| `src/` (except `src/switcher/`), `skills/`, `deploy/dmz/`, `config.yaml`, `requirements.txt`, `main.py` | DMZ host | `sudo ./deploy/dmz/deploy.sh` |
-| `web/` | DMZ host (web only) | `sudo ./deploy/dmz/deploy.sh web` |
-| `Dockerfile.runner` | DMZ host (containers) | `sudo ./deploy/dmz/deploy.sh` |
-| `app/` | iOS — no deploy command needed |
-
-**Determine the DMZ deploy flags:**
-
-Start with `sudo ./deploy/dmz/deploy.sh --pull`.
-
-1. **`--restart`**: Add if ANY of these changed: `src/` (except `src/switcher/`), `skills/`, `deploy/dmz/config.yaml`, `deploy/dmz/systemd/`, `requirements.txt`, `main.py`.
-2. **`--containers`**: Add if `Dockerfile.runner`, `src/runner/`, `requirements.txt`, `skills/`, or `config.yaml` changed — these are all copied into the container image.
-3. **`--no-cache`**: Add if `Dockerfile.runner` itself changed (not just files copied into it). Changes to `Dockerfile.runner` may alter base images, apt packages, or build steps that need a full rebuild.
-4. **`--kill-containers`**: Add alongside `--containers` if `src/runner/` changed — running containers use the old image and need to be recycled.
-5. **`--migrate`**: Add if `deploy/dmz/migrate-async.py` changed or if new database schema changes are evident from the diff.
-
-**Web-only shortcut:** If ONLY `web/` files changed (nothing else), use `sudo ./deploy/dmz/deploy.sh web --pull --restart` instead of the full deploy.
-
-**GPU host flags:** The GPU deploy script supports `--pull` and `--restart` (restarts `llm-switcher`). Example: `sudo ./deploy/gpu/deploy.sh --pull --restart`.
-
-**Output format:** Present the command in a fenced code block (which renders a copy button) with a brief explanation of why each flag was chosen:
-
-````
-## Deploy
-
-<explanation of what changed and why each flag is needed>
+After the summary, confirm the module builds and tests pass:
 
 ```bash
-sudo ./deploy/dmz/deploy.sh --pull --restart --containers --kill-containers
+dotnet publish src/CopilotPS.csproj -c Release -o out
+dotnet test tests/CopilotPS.Tests.csproj --filter "Category=Unit"
 ```
-````
 
-If both DMZ and GPU hosts need deployment, show both commands. If the change is iOS-only (`app/`), state that no server deployment is needed.
+Report any failures. If everything passes, note it in the summary.
 
 **As the very last line of output**, print the PR URL on its own line. Never wrap the URL in markdown bold, brackets, or any other formatting — output the bare URL so it remains clickable.
 

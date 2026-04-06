@@ -32,15 +32,10 @@ Review ALL commits on the branch (not just the latest). Understand:
 ## 4. Push and create
 
 - Push with `git push -u origin <branch-name>` if needed.
-- **If a PR was already created earlier in this conversation**, check its status before creating another:
-  `gh api "repos/{owner}/{repo}/pulls?head={owner}:{branch}&state=all" --jq '.[0] | {number, state, html_url}'`
-  - **Important**: Use query string params (`?key=value`) for this GET request — `-f` flags trigger a POST.
-  - If the existing PR is **open**, update its title and body with `--method PATCH` instead of creating a new one.
-  - If the existing PR is **closed/merged**, create a new PR (the old one cannot be reused).
-- **If this is the first PR in the conversation**, skip the check and create directly.
-- Create the PR using `gh api repos/{owner}/{repo}/pulls --method POST`.
-- Pass title, head, base, and body as `-f` flags. Use `-f base=main`.
-- Extract the URL from the response with `--jq '.html_url'`.
+- Use the MCP GitHub tools (`mcp__github__*`) to check for an existing PR on this branch and create or update accordingly.
+  - If an existing PR is **open**, update its title and body instead of creating a new one.
+  - If no open PR exists, create a new one with base `main`.
+- Extract the PR URL from the response.
 
 ## 5. Output
 
@@ -54,7 +49,9 @@ Review ALL commits on the branch (not just the latest). Understand:
 <1-3 bullet points describing what changed and why>
 
 ## Test plan
-- [ ] <Checklist of verification steps>
+- [ ] `dotnet test tests/CopilotPS.Tests.csproj --filter "Category=Unit"` passes
+- [ ] `dotnet publish src/CopilotPS.csproj -c Release -o out` succeeds
+- [ ] <Additional verification steps>
 
 <session-link>
 ```
