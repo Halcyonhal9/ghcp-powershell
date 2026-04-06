@@ -34,17 +34,19 @@ internal static class ModuleState
 
     internal static async Task CleanupAsync()
     {
-        if (CurrentSession is not null)
+        var session = CurrentSession;
+        if (session is not null)
         {
-            try { await CurrentSession.DisposeAsync(); } catch { }
             CurrentSession = null;
+            try { await session.DisposeAsync(); } catch { }
         }
 
-        if (Client is not null)
+        var client = Client;
+        if (client is not null)
         {
-            try { await Client.StopAsync(); } catch { }
-            try { Client.Dispose(); } catch { }
             Client = null;
+            try { await client.StopAsync(); } catch { }
+            try { client.Dispose(); } catch { }
         }
     }
 }
@@ -103,7 +105,7 @@ internal static class UserInputHandlers
         return Task.FromResult(new UserInputResponse
         {
             Answer = answer,
-            WasFreeform = request.Choices is null || request.Choices.Count == 0
+            WasFreeform = request.Choices is not { Count: > 0 }
         });
     };
 }
