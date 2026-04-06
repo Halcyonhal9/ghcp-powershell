@@ -17,6 +17,7 @@ public sealed class NewCopilotClientCmdlet : PSCmdlet
     public string? CliUrl { get; set; }
 
     [Parameter]
+    [ArgumentCompleter(typeof(LogLevelCompleter))]
     public string LogLevel { get; set; } = "info";
 
     protected override void EndProcessing()
