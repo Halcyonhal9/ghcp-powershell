@@ -2,6 +2,8 @@ using System.Management.Automation;
 using GitHub.Copilot.SDK;
 using Xunit;
 
+using CopilotCmdlets;
+
 namespace CopilotPS.Tests.EndToEnd;
 
 [Trait("Category", "EndToEnd")]

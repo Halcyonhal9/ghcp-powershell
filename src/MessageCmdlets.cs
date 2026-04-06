@@ -1,7 +1,7 @@
 using System.Management.Automation;
 using GitHub.Copilot.SDK;
 
-namespace CopilotPS;
+namespace CopilotCmdlets;
 
 /// <summary>Structured result returned by Send-CopilotMessage after the session goes idle.</summary>
 public class CopilotMessageResult

@@ -1,7 +1,7 @@
 using System.Management.Automation;
 using GitHub.Copilot.SDK;
 
-namespace CopilotPS;
+namespace CopilotCmdlets;
 
 internal static class ModuleState
 {
