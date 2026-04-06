@@ -102,4 +102,27 @@ public class MessageCmdletTests
 
         Assert.Equal(2, result.Events.Count);
     }
+
+    [Fact]
+    public void SendCopilotMessage_HasStopProcessingOverride()
+    {
+        // Verify the cmdlet supports cancellation via StopProcessing
+        var method = typeof(SendCopilotMessageCmdlet).GetMethod(
+            "StopProcessing",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        Assert.NotNull(method);
+        Assert.True(method!.DeclaringType == typeof(SendCopilotMessageCmdlet),
+            "StopProcessing should be overridden in SendCopilotMessageCmdlet");
+    }
+
+    [Fact]
+    public void SendCopilotMessage_HasCancellationTokenSourceField()
+    {
+        // Verify the cmdlet has the CancellationTokenSource for cancellation support
+        var field = typeof(SendCopilotMessageCmdlet).GetField(
+            "_cts",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        Assert.NotNull(field);
+        Assert.Equal(typeof(CancellationTokenSource), field!.FieldType);
+    }
 }

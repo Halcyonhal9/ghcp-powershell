@@ -39,7 +39,17 @@ public sealed class NewCopilotSessionCmdlet : PSCmdlet
 
     protected override void EndProcessing()
     {
-        var target = ModuleState.RequireClient(Client);
+        CopilotClient target;
+        try
+        {
+            target = ModuleState.RequireClient(Client);
+        }
+        catch (Exception ex)
+        {
+            ThrowTerminatingError(new ErrorRecord(
+                ex, "NoClient", ErrorCategory.InvalidOperation, null));
+            return;
+        }
 
         var config = new SessionConfig
         {
@@ -99,7 +109,17 @@ public sealed class ResumeCopilotSessionCmdlet : PSCmdlet
 
     protected override void EndProcessing()
     {
-        var target = ModuleState.RequireClient(Client);
+        CopilotClient target;
+        try
+        {
+            target = ModuleState.RequireClient(Client);
+        }
+        catch (Exception ex)
+        {
+            ThrowTerminatingError(new ErrorRecord(
+                ex, "NoClient", ErrorCategory.InvalidOperation, null));
+            return;
+        }
 
         var config = new ResumeSessionConfig
         {
@@ -137,7 +157,17 @@ public sealed class GetCopilotSessionCmdlet : PSCmdlet
 
     protected override void EndProcessing()
     {
-        var target = ModuleState.RequireClient(Client);
+        CopilotClient target;
+        try
+        {
+            target = ModuleState.RequireClient(Client);
+        }
+        catch (Exception ex)
+        {
+            ThrowTerminatingError(new ErrorRecord(
+                ex, "NoClient", ErrorCategory.InvalidOperation, null));
+            return;
+        }
 
         try
         {
@@ -164,7 +194,17 @@ public sealed class RemoveCopilotSessionCmdlet : PSCmdlet
 
     protected override void EndProcessing()
     {
-        var target = ModuleState.RequireClient(Client);
+        CopilotClient target;
+        try
+        {
+            target = ModuleState.RequireClient(Client);
+        }
+        catch (Exception ex)
+        {
+            ThrowTerminatingError(new ErrorRecord(
+                ex, "NoClient", ErrorCategory.InvalidOperation, null));
+            return;
+        }
 
         if (!ShouldProcess(SessionId, "Delete session"))
             return;
@@ -190,7 +230,17 @@ public sealed class CloseCopilotSessionCmdlet : PSCmdlet
 
     protected override void EndProcessing()
     {
-        var target = ModuleState.RequireSession(Session);
+        CopilotSession target;
+        try
+        {
+            target = ModuleState.RequireSession(Session);
+        }
+        catch (Exception ex)
+        {
+            ThrowTerminatingError(new ErrorRecord(
+                ex, "NoSession", ErrorCategory.InvalidOperation, null));
+            return;
+        }
 
         try
         {
