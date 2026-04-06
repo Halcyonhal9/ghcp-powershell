@@ -17,6 +17,7 @@
         'Close-CopilotSession'
         'Send-CopilotMessage'
         'Get-CopilotMessage'
+        'Get-CopilotModel'
     )
     FunctionsToExport = @()
     AliasesToExport   = @()

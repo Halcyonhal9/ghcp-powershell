@@ -14,6 +14,7 @@ public sealed class NewCopilotSessionCmdlet : PSCmdlet
     public string? SessionId { get; set; }
 
     [Parameter]
+    [ArgumentCompleter(typeof(CopilotModelCompleter))]
     public string? Model { get; set; }
 
     [Parameter]
@@ -87,6 +88,7 @@ public sealed class ResumeCopilotSessionCmdlet : PSCmdlet
     public CopilotClient? Client { get; set; }
 
     [Parameter]
+    [ArgumentCompleter(typeof(CopilotModelCompleter))]
     public string? Model { get; set; }
 
     [Parameter]
