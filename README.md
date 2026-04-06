@@ -8,7 +8,15 @@ PowerShell wrapper for the [GitHub Copilot SDK](https://www.nuget.org/packages/G
 - .NET 9
 - A GitHub account with Copilot access
 
-## Build
+## Installation
+
+Download the latest zip from [Releases](https://github.com/Halcyonhal9/ghcp-powershell/releases), extract it, and import the module:
+
+```powershell
+Import-Module ./CopilotCmdlets.psd1
+```
+
+### Build from Source
 
 ```bash
 dotnet publish src/CopilotCmdlets.csproj -c Release -o out
@@ -83,6 +91,12 @@ Stop-CopilotClient
 |--------|-------------|
 | `Send-CopilotMessage` | Sends a prompt, streams output, returns result |
 | `Get-CopilotMessage` | Retrieves conversation history |
+
+### Models
+
+| Cmdlet             | Description                     |
+|--------------------|---------------------------------|
+| `Get-CopilotModel` | Lists available Copilot models |
 
 ## Key Parameters
 

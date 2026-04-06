@@ -92,14 +92,6 @@ internal static class PermissionHandlers
         Console.Error.WriteLine($"[Permission] {request.Kind}");
         Console.ForegroundColor = originalColor;
 
-        if (request.ExtensionData is not null)
-        {
-            foreach (var kvp in request.ExtensionData)
-            {
-                Console.Error.WriteLine($"  {kvp.Key}: {kvp.Value}");
-            }
-        }
-
         Console.Error.Write("Allow? (y/n): ");
         var response = Console.ReadLine();
         var approved = string.Equals(response?.Trim(), "y", StringComparison.OrdinalIgnoreCase);
