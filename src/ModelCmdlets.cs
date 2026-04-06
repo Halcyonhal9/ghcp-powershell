@@ -62,13 +62,13 @@ public sealed class CopilotModelCompleter : IArgumentCompleter
             yield break;
         }
 
-        var pattern = wordToComplete ?? string.Empty;
+        var prefix = wordToComplete ?? string.Empty;
 
         foreach (var model in models)
         {
             var id = model.Id;
             if (id is null) continue;
-            if (id.StartsWith(pattern, StringComparison.OrdinalIgnoreCase))
+            if (id.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
             {
                 yield return new CompletionResult(id, id, CompletionResultType.ParameterValue, id);
             }

@@ -33,7 +33,7 @@ public class ModelCmdletTests
     {
         var prop = typeof(GetCopilotModelCmdlet).GetProperty("Client")!;
         Assert.NotNull(prop);
-        Assert.Equal(typeof(CopilotClient), Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType);
+        Assert.Equal(typeof(CopilotClient), prop.PropertyType);
     }
 
     [Fact]
