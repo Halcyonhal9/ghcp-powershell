@@ -25,15 +25,14 @@ No platform-specific code is required. The Copilot SDK manages CLI process lifec
 ## 3. Project Layout
 
 ```
-powershell/
-├── src/
-│   ├── CopilotPS.csproj        # Project file
-│   ├── ModuleState.cs          # Singleton state + permission/input handlers + module cleanup
-│   ├── ClientCmdlets.cs        # New-CopilotClient, Stop-CopilotClient, Test-CopilotConnection
-│   ├── SessionCmdlets.cs       # New/Resume/Get/Remove/Close-CopilotSession
-│   └── MessageCmdlets.cs       # Send-CopilotMessage, Get-CopilotMessage
-├── CopilotPS.psd1              # Module manifest (copied to output on build)
-└── build.ps1                   # Convenience: dotnet publish + tells you the import path
+src/
+├── CopilotPS.csproj        # Project file
+├── ModuleState.cs          # Singleton state + permission/input handlers + module cleanup
+├── ClientCmdlets.cs        # New-CopilotClient, Stop-CopilotClient, Test-CopilotConnection
+├── SessionCmdlets.cs       # New/Resume/Get/Remove/Close-CopilotSession
+└── MessageCmdlets.cs       # Send-CopilotMessage, Get-CopilotMessage
+CopilotPS.psd1              # Module manifest (copied to output on build)
+build.ps1                   # Convenience: dotnet publish + tells you the import path
 ```
 
 **Five C# files, one manifest, one build script.** That's the entire module.
