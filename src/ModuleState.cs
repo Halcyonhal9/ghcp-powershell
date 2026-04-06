@@ -51,7 +51,7 @@ internal static class ModuleState
 
 internal static class PermissionHandlers
 {
-    internal static PermissionRequestHandler Interactive => (request, invocation) =>
+    internal static readonly PermissionRequestHandler Interactive = (request, invocation) =>
     {
         var originalColor = Console.ForegroundColor;
         Console.ForegroundColor = ConsoleColor.Yellow;
@@ -76,7 +76,7 @@ internal static class PermissionHandlers
         });
     };
 
-    internal static PermissionRequestHandler AutoApprove => (request, invocation) =>
+    internal static readonly PermissionRequestHandler AutoApprove = (request, invocation) =>
         Task.FromResult(new PermissionRequestResult
         {
             Kind = new PermissionRequestResultKind("approve")
@@ -85,7 +85,7 @@ internal static class PermissionHandlers
 
 internal static class UserInputHandlers
 {
-    internal static UserInputHandler Interactive => (request, invocation) =>
+    internal static readonly UserInputHandler Interactive = (request, invocation) =>
     {
         Console.Error.WriteLine($"[Input] {request.Question}");
 

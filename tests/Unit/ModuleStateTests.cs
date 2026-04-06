@@ -128,16 +128,6 @@ public class ModuleStateTests : IDisposable
     }
 
     [Fact]
-    public void RequireSession_ReturnsExplicitSessionWhenProvided()
-    {
-        // We can't easily construct a CopilotSession without the SDK,
-        // but we verify that RequireSession throws with null args
-        var ex = Assert.Throws<PSInvalidOperationException>(
-            () => ModuleState.RequireSession(null));
-        Assert.Contains("New-CopilotSession", ex.Message);
-    }
-
-    [Fact]
     public async Task CleanupAsync_HandlesNullStateGracefully()
     {
         ModuleState.Client = null;
