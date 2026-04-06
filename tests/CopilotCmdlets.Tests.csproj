@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../src/CopilotPS.csproj" />
+    <ProjectReference Include="../src/CopilotCmdlets.csproj" />
   </ItemGroup>
 
 </Project>

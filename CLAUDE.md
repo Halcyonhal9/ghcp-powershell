@@ -1,4 +1,4 @@
-# CLAUDE.md — Project Guidelines for CopilotPS
+# CLAUDE.md — Project Guidelines for CopilotCmdlets
 
 ## Core Principles
 
@@ -18,20 +18,21 @@
 - `ModuleState` is the only singleton. Cmdlets are stateless beyond what `ModuleState` holds.
 - Cmdlets accept explicit `-Client` / `-Session` parameters; fall back to `ModuleState` defaults.
 - No custom abstractions unless required for testability (e.g., thin interface wrappers around sealed SDK types).
+- C# `RootNamespace` is `CopilotCmdlets` — use `using CopilotCmdlets;` in test files.
 
 ## Testing
 
 - **Framework:** xUnit + NSubstitute.
 - **Unit tests** (`tests/Unit/`): Mock SDK types, no network or CLI required. Tagged `[Trait("Category", "Unit")]`.
 - **End-to-end tests** (`tests/EndToEnd/`): Real SDK against a running Copilot CLI. Tagged `[Trait("Category", "EndToEnd")]`. Require `GITHUB_TOKEN` env var.
-- Run unit tests: `dotnet test tests/CopilotPS.Tests.csproj --filter "Category=Unit"`
-- Run e2e tests: `dotnet test tests/CopilotPS.Tests.csproj --filter "Category=EndToEnd"`
-- Run all tests: `dotnet test tests/CopilotPS.Tests.csproj`
+- Run unit tests: `dotnet test tests/CopilotCmdlets.Tests.csproj --filter "Category=Unit"`
+- Run e2e tests: `dotnet test tests/CopilotCmdlets.Tests.csproj --filter "Category=EndToEnd"`
+- Run all tests: `dotnet test tests/CopilotCmdlets.Tests.csproj`
 
 ## Build
 
 ```bash
-dotnet publish src/CopilotPS.csproj -c Release -o out
+dotnet publish src/CopilotCmdlets.csproj -c Release -o out
 ```
 
 Or use the convenience script:
@@ -42,6 +43,6 @@ pwsh build.ps1
 
 ## Development Environment
 
-- Open the workspace: `CopilotPS.code-workspace`
+- Open the workspace: `CopilotCmdlets.code-workspace`
 - Debug configurations are in `.vscode/launch.json` (attach to pwsh, run tests)
 - Target: .NET 9 / PowerShell 7.6+
