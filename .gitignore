@@ -9,6 +9,7 @@
 
 # Build results
 out/
+*.zip
 [Dd]ebug/
 [Dd]ebugPublic/
 [Rr]elease/
