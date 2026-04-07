@@ -5,6 +5,12 @@ param(
     [switch]$Release,
 
     [Parameter(ParameterSetName = 'Release')]
+    [switch]$MinorBuild,
+
+    [Parameter(ParameterSetName = 'Release')]
+    [switch]$MajorBuild,
+
+    [Parameter(ParameterSetName = 'Release')]
     [switch]$PublishToGallery
 )
 
@@ -42,17 +48,33 @@ function Invoke-Build {
     Invoke-Native { dotnet publish $project -c Release -o $galleryDir } "dotnet publish failed for gallery build"
 }
 
-function Update-ManifestMinorVersion {
-    $content = Get-Content $manifest -Raw
-    if ($content -notmatch "ModuleVersion\s*=\s*'(\d+)\.(\d+)\.(\d+)'") {
-        throw "Could not parse ModuleVersion in $manifest"
+function Get-LatestReleaseVersion {
+    $tagJson = gh release view --json tagName 2>$null
+    if ($LASTEXITCODE -ne 0 -or -not $tagJson) {
+        Write-Host "No existing GitHub release found, starting from 0.0.0"
+        return @{ Major = 0; Minor = 0; Patch = 0 }
     }
-    $major = [int]$Matches[1]
-    $minor = [int]$Matches[2] + 1
-    $newVersion = "$major.$minor.0"
+    $tag = ($tagJson | ConvertFrom-Json).tagName
+    if ($tag -notmatch '^v?(\d+)\.(\d+)\.(\d+)$') {
+        throw "Could not parse version from latest release tag '$tag'"
+    }
+    return @{ Major = [int]$Matches[1]; Minor = [int]$Matches[2]; Patch = [int]$Matches[3] }
+}
+
+function Update-ManifestVersion {
+    param([switch]$MajorBuild, [switch]$MinorBuild)
+    $current = Get-LatestReleaseVersion
+    if ($MajorBuild) {
+        $newVersion = "$($current.Major + 1).0.0"
+    } elseif ($MinorBuild) {
+        $newVersion = "$($current.Major).$($current.Minor + 1).0"
+    } else {
+        $newVersion = "$($current.Major).$($current.Minor).$($current.Patch + 1)"
+    }
+    $content = Get-Content $manifest -Raw
     $updated = $content -replace "ModuleVersion\s*=\s*'\d+\.\d+\.\d+'", "ModuleVersion     = '$newVersion'"
     Set-Content -Path $manifest -Value $updated -NoNewline
-    Write-Host "Bumped ModuleVersion to $newVersion"
+    Write-Host "Bumped ModuleVersion to $newVersion (from $($current.Major).$($current.Minor).$($current.Patch))"
     return $newVersion
 }
 
@@ -123,7 +145,7 @@ function Publish-ToGallery {
 }
 
 if ($Release) {
-    $version = Update-ManifestMinorVersion
+    $version = Update-ManifestVersion -MajorBuild:$MajorBuild -MinorBuild:$MinorBuild
     Invoke-Build
     New-ModuleStage
     $zips = New-ReleaseZip -Version $version

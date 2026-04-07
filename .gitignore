@@ -55,3 +55,4 @@ TestResult.xml
 nunit-*.xml
 
 CopilotCmdlets-*.zip
+.env
