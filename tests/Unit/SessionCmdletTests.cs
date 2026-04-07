@@ -100,7 +100,7 @@ public class SessionCmdletTests
 
         var result = await handler.Invoke(request, invocation);
 
-        Assert.Equal("approve", result.Kind.ToString());
+        Assert.Equal("approved", result.Kind.ToString());
     }
 
     [Fact]
