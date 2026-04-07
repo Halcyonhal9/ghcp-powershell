@@ -134,11 +134,22 @@ function Publish-GitHubRelease {
     } else {
         Write-Host "Manifest already at $tag — skipping commit"
     }
-    Invoke-Native { git -C $repoRoot tag $tag } "git tag failed"
+    $existingTags = git -C $repoRoot tag --list $tag
+    if ($existingTags) {
+        Write-Host "Tag $tag already exists — skipping tag"
+    } else {
+        Invoke-Native { git -C $repoRoot tag $tag } "git tag failed"
+    }
     Invoke-Native { git -C $repoRoot push origin HEAD } "git push HEAD failed"
     Invoke-Native { git -C $repoRoot push origin $tag } "git push tag failed"
     # Splat the per-RID zip paths as positional asset arguments to gh release create.
-    Invoke-Native { gh release create $tag @ZipPaths --title $tag --notes "Release $tag" } "gh release create failed"
+    $existingRelease = gh release view $tag --json tagName 2>$null
+    if ($existingRelease) {
+        Write-Host "Release $tag already exists — uploading assets"
+        Invoke-Native { gh release upload $tag @ZipPaths --clobber } "gh release upload failed"
+    } else {
+        Invoke-Native { gh release create $tag @ZipPaths --title $tag --notes "Release $tag" } "gh release create failed"
+    }
 }
 
 function Publish-ToGallery {
