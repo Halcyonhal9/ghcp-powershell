@@ -40,8 +40,7 @@ function Update-ManifestMinorVersion {
     }
     $major = [int]$Matches[1]
     $minor = [int]$Matches[2] + 1
-    $patch = 0
-    $newVersion = "$major.$minor.$patch"
+    $newVersion = "$major.$minor.0"
     $updated = $content -replace "ModuleVersion\s*=\s*'\d+\.\d+\.\d+'", "ModuleVersion     = '$newVersion'"
     Set-Content -Path $manifest -Value $updated -NoNewline
     Write-Host "Bumped ModuleVersion to $newVersion"
