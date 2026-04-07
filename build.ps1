@@ -12,8 +12,10 @@ $ErrorActionPreference = 'Stop'
 
 $repoRoot   = $PSScriptRoot
 $manifest   = Join-Path $repoRoot 'CopilotCmdlets.psd1'
-$outDir     = Join-Path $repoRoot 'out'
-$runtimes   = @('win-x64', 'linux-x64', 'linux-arm64', 'osx-arm64')
+$outDir       = Join-Path $repoRoot 'out'
+$runtimes     = @('win-x64', 'linux-x64', 'linux-arm64', 'osx-arm64')
+$galleryDir   = Join-Path $outDir 'gallery'
+$galleryStage = Join-Path $galleryDir 'CopilotCmdlets'
 
 function Get-RuntimeOutDir { param([string]$Rid) Join-Path $outDir $Rid }
 function Get-RuntimeStageDir { param([string]$Rid) Join-Path (Get-RuntimeOutDir $Rid) 'CopilotCmdlets' }
@@ -26,11 +28,18 @@ function Invoke-Native {
 
 function Invoke-Build {
     $project = Join-Path $repoRoot 'src/CopilotCmdlets.csproj'
+    # RID-specific publishes produce architecture-tagged release zips so users on each
+    # platform get a payload matching any native dependencies GitHub.Copilot.SDK pulls
+    # in. Even when the current SDK is pure-managed, shipping per-RID artifacts keeps
+    # the release contract stable as the SDK evolves.
     foreach ($rid in $runtimes) {
         $ridOut = Get-RuntimeOutDir $rid
         Write-Host "Publishing $rid -> $ridOut"
         Invoke-Native { dotnet publish $project -c Release -r $rid --self-contained false -o $ridOut } "dotnet publish failed for $rid"
     }
+    # Separate RID-neutral publish for the PowerShell Gallery payload.
+    Write-Host "Publishing RID-neutral gallery build -> $galleryDir"
+    Invoke-Native { dotnet publish $project -c Release -o $galleryDir } "dotnet publish failed for gallery build"
 }
 
 function Update-ManifestMinorVersion {
@@ -70,6 +79,11 @@ function New-ModuleStage {
             Copy-Item -Destination $ridStage -Recurse -Force
         Copy-Item $manifest -Destination $ridStage -Force
     }
+    if (Test-Path $galleryStage) { Remove-Item $galleryStage -Recurse -Force }
+    New-Item -ItemType Directory -Force -Path $galleryStage | Out-Null
+    Get-ChildItem -Path $galleryDir -Force | Where-Object { $_.FullName -ne $galleryStage } |
+        Copy-Item -Destination $galleryStage -Recurse -Force
+    Copy-Item $manifest -Destination $galleryStage -Force
 }
 
 function New-ReleaseZip {
@@ -83,7 +97,8 @@ function New-ReleaseZip {
         Write-Host "Created $zipPath"
         $zips += $zipPath
     }
-    return $zips
+    # Comma prefix prevents PowerShell from unrolling a single-element array to a scalar.
+    return ,$zips
 }
 
 function Publish-GitHubRelease {
@@ -95,6 +110,7 @@ function Publish-GitHubRelease {
     Invoke-Native { git -C $repoRoot tag $tag } "git tag failed"
     Invoke-Native { git -C $repoRoot push origin HEAD } "git push HEAD failed"
     Invoke-Native { git -C $repoRoot push origin $tag } "git push tag failed"
+    # Splat the per-RID zip paths as positional asset arguments to gh release create.
     Invoke-Native { gh release create $tag @ZipPaths --title $tag --notes "Release $tag" } "gh release create failed"
 }
 
@@ -102,8 +118,6 @@ function Publish-ToGallery {
     param([string]$Version)
     if (-not $PSCmdlet.ShouldProcess("PowerShell Gallery", "Publish CopilotCmdlets $Version")) { return }
     $apiKey = Get-DotEnvValue -Key 'POWERSHELL_GALLERY_API_KEY'
-    # PowerShell Gallery hosts a single managed-code package; publish the win-x64 stage as the canonical payload.
-    $galleryStage = Get-RuntimeStageDir 'win-x64'
     Publish-Module -Path $galleryStage -NuGetApiKey $apiKey
     Write-Host "Published CopilotCmdlets $Version to PowerShell Gallery"
 }
@@ -120,5 +134,8 @@ if ($Release) {
 }
 else {
     Invoke-Build
-    Write-Host "Import with: Import-Module ./out/win-x64/CopilotCmdlets.psd1  (or another runtime under ./out/)"
+    $currentRid = [System.Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier
+    $matchRid = $runtimes | Where-Object { $currentRid -like "$_*" } | Select-Object -First 1
+    if (-not $matchRid) { $matchRid = $runtimes[0] }
+    Write-Host "Import with: Import-Module ./out/$matchRid/CopilotCmdlets.psd1"
 }
