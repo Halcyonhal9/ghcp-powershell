@@ -98,15 +98,13 @@ internal static class PermissionHandlers
 
         return Task.FromResult(new PermissionRequestResult
         {
-            Kind = new PermissionRequestResultKind(approved ? "approve" : "deny")
+            Kind = approved
+                ? PermissionRequestResultKind.Approved
+                : PermissionRequestResultKind.DeniedInteractivelyByUser
         });
     };
 
-    internal static readonly PermissionRequestHandler AutoApprove = (request, invocation) =>
-        Task.FromResult(new PermissionRequestResult
-        {
-            Kind = new PermissionRequestResultKind("approve")
-        });
+    internal static readonly PermissionRequestHandler AutoApprove = PermissionHandler.ApproveAll;
 }
 
 internal static class UserInputHandlers
