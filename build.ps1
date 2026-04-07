@@ -13,7 +13,10 @@ $ErrorActionPreference = 'Stop'
 $repoRoot   = $PSScriptRoot
 $manifest   = Join-Path $repoRoot 'CopilotCmdlets.psd1'
 $outDir     = Join-Path $repoRoot 'out'
-$stageDir   = Join-Path $outDir 'CopilotCmdlets'
+$runtimes   = @('win-x64', 'linux-x64', 'linux-arm64', 'osx-arm64')
+
+function Get-RuntimeOutDir { param([string]$Rid) Join-Path $outDir $Rid }
+function Get-RuntimeStageDir { param([string]$Rid) Join-Path (Get-RuntimeOutDir $Rid) 'CopilotCmdlets' }
 
 function Invoke-Native {
     param([scriptblock]$ScriptBlock, [string]$ErrorMessage)
@@ -22,7 +25,12 @@ function Invoke-Native {
 }
 
 function Invoke-Build {
-    Invoke-Native { dotnet publish (Join-Path $repoRoot 'src/CopilotCmdlets.csproj') -c Release -o $outDir } "dotnet publish failed"
+    $project = Join-Path $repoRoot 'src/CopilotCmdlets.csproj'
+    foreach ($rid in $runtimes) {
+        $ridOut = Get-RuntimeOutDir $rid
+        Write-Host "Publishing $rid -> $ridOut"
+        Invoke-Native { dotnet publish $project -c Release -r $rid --self-contained false -o $ridOut } "dotnet publish failed for $rid"
+    }
 }
 
 function Update-ManifestMinorVersion {
@@ -54,24 +62,33 @@ function Get-DotEnvValue {
 }
 
 function New-ModuleStage {
-    if (Test-Path $stageDir) { Remove-Item $stageDir -Recurse -Force }
-    New-Item -ItemType Directory -Force -Path $stageDir | Out-Null
-    Get-ChildItem -Path $outDir -Force | Where-Object { $_.FullName -ne $stageDir } |
-        Copy-Item -Destination $stageDir -Recurse -Force
-    Copy-Item $manifest -Destination $stageDir -Force
+    foreach ($rid in $runtimes) {
+        $ridOut   = Get-RuntimeOutDir $rid
+        $ridStage = Get-RuntimeStageDir $rid
+        if (Test-Path $ridStage) { Remove-Item $ridStage -Recurse -Force }
+        New-Item -ItemType Directory -Force -Path $ridStage | Out-Null
+        Get-ChildItem -Path $ridOut -Force | Where-Object { $_.FullName -ne $ridStage } |
+            Copy-Item -Destination $ridStage -Recurse -Force
+        Copy-Item $manifest -Destination $ridStage -Force
+    }
 }
 
 function New-ReleaseZip {
     param([string]$Version)
-    $zipPath = Join-Path $repoRoot "CopilotCmdlets-$Version.zip"
-    if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
-    Compress-Archive -Path (Join-Path $stageDir '*') -DestinationPath $zipPath -Force
-    Write-Host "Created $zipPath"
-    return $zipPath
+    $zips = @()
+    foreach ($rid in $runtimes) {
+        $ridStage = Get-RuntimeStageDir $rid
+        $zipPath  = Join-Path $repoRoot "CopilotCmdlets-$Version-$rid.zip"
+        if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
+        Compress-Archive -Path (Join-Path $ridStage '*') -DestinationPath $zipPath -Force
+        Write-Host "Created $zipPath"
+        $zips += $zipPath
+    }
+    return $zips
 }
 
 function Publish-GitHubRelease {
-    param([string]$Version, [string]$ZipPath)
+    param([string]$Version, [string[]]$ZipPaths)
     $tag = "v$Version"
     if (-not $PSCmdlet.ShouldProcess("GitHub release $tag", "Commit, tag, push and create release")) { return }
     Invoke-Native { git -C $repoRoot add $manifest } "git add failed"
@@ -79,14 +96,16 @@ function Publish-GitHubRelease {
     Invoke-Native { git -C $repoRoot tag $tag } "git tag failed"
     Invoke-Native { git -C $repoRoot push origin HEAD } "git push HEAD failed"
     Invoke-Native { git -C $repoRoot push origin $tag } "git push tag failed"
-    Invoke-Native { gh release create $tag $ZipPath --title $tag --notes "Release $tag" } "gh release create failed"
+    Invoke-Native { gh release create $tag @ZipPaths --title $tag --notes "Release $tag" } "gh release create failed"
 }
 
 function Publish-ToGallery {
     param([string]$Version)
     if (-not $PSCmdlet.ShouldProcess("PowerShell Gallery", "Publish CopilotCmdlets $Version")) { return }
     $apiKey = Get-DotEnvValue -Key 'POWERSHELL_GALLERY_API_KEY'
-    Publish-Module -Path $stageDir -NuGetApiKey $apiKey
+    # PowerShell Gallery hosts a single managed-code package; publish the win-x64 stage as the canonical payload.
+    $galleryStage = Get-RuntimeStageDir 'win-x64'
+    Publish-Module -Path $galleryStage -NuGetApiKey $apiKey
     Write-Host "Published CopilotCmdlets $Version to PowerShell Gallery"
 }
 
@@ -94,13 +113,13 @@ if ($Release) {
     $version = Update-ManifestMinorVersion
     Invoke-Build
     New-ModuleStage
-    $zip = New-ReleaseZip -Version $version
-    Publish-GitHubRelease -Version $version -ZipPath $zip
+    $zips = New-ReleaseZip -Version $version
+    Publish-GitHubRelease -Version $version -ZipPaths $zips
     if ($PublishToGallery) {
         Publish-ToGallery -Version $version
     }
 }
 else {
     Invoke-Build
-    Write-Host "Import with: Import-Module ./out/CopilotCmdlets.psd1"
+    Write-Host "Import with: Import-Module ./out/win-x64/CopilotCmdlets.psd1  (or another runtime under ./out/)"
 }
