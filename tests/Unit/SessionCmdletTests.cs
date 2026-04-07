@@ -1,3 +1,4 @@
+using System.IO;
 using System.Management.Automation;
 using GitHub.Copilot.SDK;
 using Xunit;
@@ -101,6 +102,52 @@ public class SessionCmdletTests
         var result = await handler.Invoke(request, invocation);
 
         Assert.Equal("approved", result.Kind.ToString());
+    }
+
+    [Fact]
+    public async Task PermissionHandlers_InteractiveApprovesOnY()
+    {
+        var handler = PermissionHandlers.Interactive;
+        var request = new PermissionRequest { Kind = "tool_use" };
+        var invocation = new PermissionInvocation();
+
+        var originalIn = Console.In;
+        var originalErr = Console.Error;
+        try
+        {
+            Console.SetIn(new StringReader("y"));
+            Console.SetError(TextWriter.Null);
+            var result = await handler.Invoke(request, invocation);
+            Assert.Equal("approved", result.Kind.ToString());
+        }
+        finally
+        {
+            Console.SetIn(originalIn);
+            Console.SetError(originalErr);
+        }
+    }
+
+    [Fact]
+    public async Task PermissionHandlers_InteractiveDeniesOnN()
+    {
+        var handler = PermissionHandlers.Interactive;
+        var request = new PermissionRequest { Kind = "tool_use" };
+        var invocation = new PermissionInvocation();
+
+        var originalIn = Console.In;
+        var originalErr = Console.Error;
+        try
+        {
+            Console.SetIn(new StringReader("n"));
+            Console.SetError(TextWriter.Null);
+            var result = await handler.Invoke(request, invocation);
+            Assert.Equal("denied-interactively-by-user", result.Kind.ToString());
+        }
+        finally
+        {
+            Console.SetIn(originalIn);
+            Console.SetError(originalErr);
+        }
     }
 
     [Fact]
