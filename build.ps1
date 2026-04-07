@@ -128,7 +128,12 @@ function Publish-GitHubRelease {
     $tag = "v$Version"
     if (-not $PSCmdlet.ShouldProcess("GitHub release $tag", "Commit, tag, push and create release")) { return }
     Invoke-Native { git -C $repoRoot add $manifest } "git add failed"
-    Invoke-Native { git -C $repoRoot commit -m "Release $tag" } "git commit failed"
+    $staged = git -C $repoRoot diff --cached --quiet 2>&1; $hasStagedChanges = $LASTEXITCODE -ne 0
+    if ($hasStagedChanges) {
+        Invoke-Native { git -C $repoRoot commit -m "Release $tag" } "git commit failed"
+    } else {
+        Write-Host "Manifest already at $tag — skipping commit"
+    }
     Invoke-Native { git -C $repoRoot tag $tag } "git tag failed"
     Invoke-Native { git -C $repoRoot push origin HEAD } "git push HEAD failed"
     Invoke-Native { git -C $repoRoot push origin $tag } "git push tag failed"
