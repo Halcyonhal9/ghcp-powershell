@@ -87,5 +87,15 @@ public class ClientCmdletTests
         Assert.NotNull(type.GetProperty("CliPath"));
         Assert.NotNull(type.GetProperty("CliUrl"));
         Assert.NotNull(type.GetProperty("LogLevel"));
+        Assert.NotNull(type.GetProperty("OtlpEndpoint"));
+        Assert.NotNull(type.GetProperty("TelemetrySourceName"));
+    }
+
+    [Fact]
+    public void NewCopilotClient_TelemetryParametersDefaultToNull()
+    {
+        var cmdlet = new NewCopilotClientCmdlet();
+        Assert.Null(cmdlet.OtlpEndpoint);
+        Assert.Null(cmdlet.TelemetrySourceName);
     }
 }

@@ -39,6 +39,12 @@ public sealed class NewCopilotSessionCmdlet : PSCmdlet
     [Parameter]
     public string[]? ExcludedTools { get; set; }
 
+    [Parameter]
+    public SwitchParameter EnableConfigDiscovery { get; set; }
+
+    [Parameter]
+    public string? Agent { get; set; }
+
     protected override void EndProcessing()
     {
         if (!ModuleState.TryRequireClient(Client, out var target, out var noClient))
@@ -62,6 +68,8 @@ public sealed class NewCopilotSessionCmdlet : PSCmdlet
         if (WorkingDirectory is not null) config.WorkingDirectory = WorkingDirectory;
         if (AvailableTools is not null) config.AvailableTools = new List<string>(AvailableTools);
         if (ExcludedTools is not null) config.ExcludedTools = new List<string>(ExcludedTools);
+        if (EnableConfigDiscovery) config.EnableConfigDiscovery = true;
+        if (Agent is not null) config.Agent = Agent;
 
         try
         {
@@ -106,6 +114,9 @@ public sealed class ResumeCopilotSessionCmdlet : PSCmdlet
     [Parameter]
     public string? WorkingDirectory { get; set; }
 
+    [Parameter]
+    public SwitchParameter EnableConfigDiscovery { get; set; }
+
     protected override void EndProcessing()
     {
         if (!ModuleState.TryRequireClient(Client, out var target, out var noClient))
@@ -125,6 +136,7 @@ public sealed class ResumeCopilotSessionCmdlet : PSCmdlet
         if (SystemMessage is not null) config.SystemMessage = new SystemMessageConfig { Content = SystemMessage };
         if (ReasoningEffort is not null) config.ReasoningEffort = ReasoningEffort;
         if (WorkingDirectory is not null) config.WorkingDirectory = WorkingDirectory;
+        if (EnableConfigDiscovery) config.EnableConfigDiscovery = true;
 
         try
         {
@@ -145,6 +157,10 @@ public sealed class ResumeCopilotSessionCmdlet : PSCmdlet
 [OutputType(typeof(SessionMetadata))]
 public sealed class GetCopilotSessionCmdlet : PSCmdlet
 {
+    [Parameter(Position = 0)]
+    [ArgumentCompleter(typeof(CopilotSessionCompleter))]
+    public string? SessionId { get; set; }
+
     [Parameter]
     public CopilotClient? Client { get; set; }
 
@@ -158,9 +174,19 @@ public sealed class GetCopilotSessionCmdlet : PSCmdlet
 
         try
         {
-            var sessions = target.ListSessionsAsync(new SessionListFilter(), CancellationToken.None)
-                .GetAwaiter().GetResult();
-            WriteObject(sessions, enumerateCollection: true);
+            if (SessionId is not null)
+            {
+                var metadata = target.GetSessionMetadataAsync(SessionId, CancellationToken.None)
+                    .GetAwaiter().GetResult();
+                if (metadata is not null)
+                    WriteObject(metadata);
+            }
+            else
+            {
+                var sessions = target.ListSessionsAsync(new SessionListFilter(), CancellationToken.None)
+                    .GetAwaiter().GetResult();
+                WriteObject(sessions, enumerateCollection: true);
+            }
         }
         catch (Exception ex)
         {

@@ -104,6 +104,30 @@ public class MessageCmdletTests
     }
 
     [Fact]
+    public void SendCopilotMessage_HasBlobDataParameter()
+    {
+        var prop = typeof(SendCopilotMessageCmdlet).GetProperty("BlobData")!;
+        Assert.NotNull(prop);
+        Assert.Equal(typeof(string), prop.PropertyType);
+    }
+
+    [Fact]
+    public void SendCopilotMessage_HasBlobMimeTypeParameter()
+    {
+        var prop = typeof(SendCopilotMessageCmdlet).GetProperty("BlobMimeType")!;
+        Assert.NotNull(prop);
+        Assert.Equal(typeof(string), prop.PropertyType);
+    }
+
+    [Fact]
+    public void SendCopilotMessage_BlobParametersDefaultToNull()
+    {
+        var cmdlet = new SendCopilotMessageCmdlet();
+        Assert.Null(cmdlet.BlobData);
+        Assert.Null(cmdlet.BlobMimeType);
+    }
+
+    [Fact]
     public void SendCopilotMessage_StopProcessingCancelsCts()
     {
         var cmdlet = new SendCopilotMessageCmdlet();

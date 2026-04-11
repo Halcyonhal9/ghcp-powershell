@@ -20,12 +20,27 @@ public sealed class NewCopilotClientCmdlet : PSCmdlet
     [ArgumentCompleter(typeof(LogLevelCompleter))]
     public string LogLevel { get; set; } = "info";
 
+    [Parameter]
+    public string? OtlpEndpoint { get; set; }
+
+    [Parameter]
+    public string? TelemetrySourceName { get; set; }
+
     protected override void EndProcessing()
     {
         var options = new CopilotClientOptions
         {
             LogLevel = LogLevel
         };
+
+        if (OtlpEndpoint is not null || TelemetrySourceName is not null)
+        {
+            options.Telemetry = new TelemetryConfig
+            {
+                OtlpEndpoint = OtlpEndpoint,
+                SourceName = TelemetrySourceName
+            };
+        }
 
         if (GitHubToken is not null) options.GitHubToken = GitHubToken;
         if (CliPath is not null)
