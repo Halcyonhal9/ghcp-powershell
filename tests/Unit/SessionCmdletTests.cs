@@ -182,6 +182,14 @@ public class SessionCmdletTests
     }
 
     [Fact]
+    public void ResumeCopilotSession_HasAgentParameter()
+    {
+        var prop = typeof(ResumeCopilotSessionCmdlet).GetProperty("Agent")!;
+        Assert.NotNull(prop);
+        Assert.Equal(typeof(string), prop.PropertyType);
+    }
+
+    [Fact]
     public void GetCopilotSession_HasOptionalSessionIdParameter()
     {
         var prop = typeof(GetCopilotSessionCmdlet).GetProperty("SessionId")!;

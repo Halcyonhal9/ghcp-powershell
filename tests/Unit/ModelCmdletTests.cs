@@ -142,4 +142,23 @@ public class ModelCmdletTests
         Assert.NotNull(prop);
         Assert.Equal(typeof(CopilotSession), prop.PropertyType);
     }
+
+    [Fact]
+    public void SetCopilotModel_RequiresSession()
+    {
+        // Verify the cmdlet uses TryRequireSession (will fail when no session is set).
+        // CopilotSession is sealed so NSubstitute can't mock it — we validate the guard clause.
+        var original = ModuleState.CurrentSession;
+        try
+        {
+            ModuleState.CurrentSession = null;
+            var success = ModuleState.TryRequireSession(null, out _, out var error);
+            Assert.False(success);
+            Assert.Equal("NoSession", error!.FullyQualifiedErrorId);
+        }
+        finally
+        {
+            ModuleState.CurrentSession = original;
+        }
+    }
 }

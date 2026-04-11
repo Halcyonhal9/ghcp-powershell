@@ -117,6 +117,9 @@ public sealed class ResumeCopilotSessionCmdlet : PSCmdlet
     [Parameter]
     public SwitchParameter EnableConfigDiscovery { get; set; }
 
+    [Parameter]
+    public string? Agent { get; set; }
+
     protected override void EndProcessing()
     {
         if (!ModuleState.TryRequireClient(Client, out var target, out var noClient))
@@ -137,6 +140,7 @@ public sealed class ResumeCopilotSessionCmdlet : PSCmdlet
         if (ReasoningEffort is not null) config.ReasoningEffort = ReasoningEffort;
         if (WorkingDirectory is not null) config.WorkingDirectory = WorkingDirectory;
         if (EnableConfigDiscovery) config.EnableConfigDiscovery = true;
+        if (Agent is not null) config.Agent = Agent;
 
         try
         {
@@ -179,7 +183,15 @@ public sealed class GetCopilotSessionCmdlet : PSCmdlet
                 var metadata = target.GetSessionMetadataAsync(SessionId, CancellationToken.None)
                     .GetAwaiter().GetResult();
                 if (metadata is not null)
+                {
                     WriteObject(metadata);
+                }
+                else
+                {
+                    WriteError(new ErrorRecord(
+                        new ItemNotFoundException($"Session '{SessionId}' was not found."),
+                        "SessionNotFound", ErrorCategory.ObjectNotFound, SessionId));
+                }
             }
             else
             {

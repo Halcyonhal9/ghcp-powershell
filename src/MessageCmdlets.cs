@@ -34,6 +34,7 @@ public sealed class SendCopilotMessageCmdlet : PSCmdlet
     [Parameter]
     public string[]? Attachment { get; set; }
 
+    /// <summary>Base64-encoded binary data to attach inline (e.g. an image). Use with -BlobMimeType.</summary>
     [Parameter]
     public string? BlobData { get; set; }
 
