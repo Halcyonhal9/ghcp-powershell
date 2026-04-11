@@ -34,6 +34,13 @@ public sealed class SendCopilotMessageCmdlet : PSCmdlet
     [Parameter]
     public string[]? Attachment { get; set; }
 
+    /// <summary>Base64-encoded binary data to attach inline (e.g. an image). Use with -BlobMimeType.</summary>
+    [Parameter]
+    public string? BlobData { get; set; }
+
+    [Parameter]
+    public string? BlobMimeType { get; set; }
+
     [Parameter]
     public TimeSpan Timeout { get; set; } = TimeSpan.FromMinutes(5);
 
@@ -100,16 +107,31 @@ public sealed class SendCopilotMessageCmdlet : PSCmdlet
         {
             var options = new MessageOptions { Prompt = Prompt };
 
+            var attachments = new List<UserMessageDataAttachmentsItem>();
+
             if (Attachment is { Length: > 0 })
             {
-                options.Attachments = Attachment
-                    .Select(path => (UserMessageDataAttachmentsItem)new UserMessageDataAttachmentsItemFile
+                attachments.AddRange(Attachment.Select(path =>
+                    (UserMessageDataAttachmentsItem)new UserMessageDataAttachmentsItemFile
                     {
                         Path = path,
                         DisplayName = System.IO.Path.GetFileName(path),
                         Type = "file"
-                    })
-                    .ToList();
+                    }));
+            }
+
+            if (BlobData is not null)
+            {
+                attachments.Add(new UserMessageDataAttachmentsItemBlob
+                {
+                    Data = BlobData,
+                    MimeType = BlobMimeType ?? "application/octet-stream"
+                });
+            }
+
+            if (attachments.Count > 0)
+            {
+                options.Attachments = attachments;
             }
 
             target.SendAsync(options, _cts.Token).GetAwaiter().GetResult();

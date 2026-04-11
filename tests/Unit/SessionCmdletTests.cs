@@ -156,4 +156,55 @@ public class SessionCmdletTests
         var handler = UserInputHandlers.Interactive;
         Assert.NotNull(handler);
     }
+
+    [Fact]
+    public void NewCopilotSession_HasEnableConfigDiscoveryParameter()
+    {
+        var prop = typeof(NewCopilotSessionCmdlet).GetProperty("EnableConfigDiscovery")!;
+        Assert.NotNull(prop);
+        Assert.Equal(typeof(SwitchParameter), prop.PropertyType);
+    }
+
+    [Fact]
+    public void NewCopilotSession_HasAgentParameter()
+    {
+        var prop = typeof(NewCopilotSessionCmdlet).GetProperty("Agent")!;
+        Assert.NotNull(prop);
+        Assert.Equal(typeof(string), prop.PropertyType);
+    }
+
+    [Fact]
+    public void ResumeCopilotSession_HasEnableConfigDiscoveryParameter()
+    {
+        var prop = typeof(ResumeCopilotSessionCmdlet).GetProperty("EnableConfigDiscovery")!;
+        Assert.NotNull(prop);
+        Assert.Equal(typeof(SwitchParameter), prop.PropertyType);
+    }
+
+    [Fact]
+    public void ResumeCopilotSession_HasAgentParameter()
+    {
+        var prop = typeof(ResumeCopilotSessionCmdlet).GetProperty("Agent")!;
+        Assert.NotNull(prop);
+        Assert.Equal(typeof(string), prop.PropertyType);
+    }
+
+    [Fact]
+    public void GetCopilotSession_HasOptionalSessionIdParameter()
+    {
+        var prop = typeof(GetCopilotSessionCmdlet).GetProperty("SessionId")!;
+        Assert.NotNull(prop);
+        var paramAttr = (ParameterAttribute)Attribute.GetCustomAttribute(prop, typeof(ParameterAttribute))!;
+        Assert.False(paramAttr.Mandatory);
+        Assert.Equal(0, paramAttr.Position);
+    }
+
+    [Fact]
+    public void GetCopilotSession_SessionIdHasArgumentCompleter()
+    {
+        var prop = typeof(GetCopilotSessionCmdlet).GetProperty("SessionId")!;
+        var attr = Attribute.GetCustomAttribute(prop, typeof(ArgumentCompleterAttribute));
+        Assert.NotNull(attr);
+        Assert.Equal(typeof(CopilotSessionCompleter), ((ArgumentCompleterAttribute)attr).Type);
+    }
 }

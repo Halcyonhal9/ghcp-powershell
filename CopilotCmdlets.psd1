@@ -18,6 +18,7 @@
         'Send-CopilotMessage'
         'Get-CopilotMessage'
         'Get-CopilotModel'
+        'Set-CopilotModel'
     )
     FunctionsToExport    = @()
     AliasesToExport      = @()
