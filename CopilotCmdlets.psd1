@@ -1,6 +1,6 @@
 @{
     RootModule           = 'CopilotCmdlets.dll'
-    ModuleVersion     = '0.4.2'
+    ModuleVersion        = '0.4.2'
     GUID                 = 'a7f3d8e1-4b2c-4f9a-8e6d-1c3b5a7f9e2d'
     Author               = 'Ben Appleby'
     Description          = 'PowerShell Cmdlets for the GitHub Copilot SDK'
@@ -22,4 +22,11 @@
     FunctionsToExport    = @()
     AliasesToExport      = @()
     VariablesToExport    = @()
+    PrivateData          = @{
+        PSData = @{
+            Tags       = @('Copilot', 'Github', 'SDK')
+            LicenseUri = 'https://github.com/Halcyonhal9/ghcp-powershell/blob/main/LICENSE'
+            ProjectUri = 'https://github.com/Halcyonhal9/ghcp-powershell'
+        }
+    }
 }
