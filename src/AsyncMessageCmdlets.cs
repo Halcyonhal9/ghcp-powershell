@@ -5,7 +5,7 @@ namespace CopilotCmdlets;
 
 /// <summary>
 /// Wraps an in-flight Send-CopilotMessage call. Returned by Send-CopilotMessageAsync;
-/// collected by Receive-CopilotAsyncResult or Wait-CopilotAsyncResult.
+/// collected by Receive-CopilotAsyncResult.
 /// </summary>
 public class CopilotAsyncResult : IDisposable
 {
@@ -103,8 +103,8 @@ public sealed class SendCopilotMessageAsyncCmdlet : PSCmdlet
     [Parameter(Mandatory = true, Position = 0)]
     public string Prompt { get; set; } = null!;
 
-    [Parameter(Mandatory = true)]
-    public CopilotSession Session { get; set; } = null!;
+    [Parameter]
+    public CopilotSession? Session { get; set; }
 
     [Parameter]
     public string? Tag { get; set; }
@@ -114,7 +114,13 @@ public sealed class SendCopilotMessageAsyncCmdlet : PSCmdlet
 
     protected override void EndProcessing()
     {
-        var asyncResult = new CopilotAsyncResult(Session, Tag);
+        if (!ModuleState.TryRequireSession(Session, out var target, out var noSession))
+        {
+            ThrowTerminatingError(noSession!);
+            return;
+        }
+
+        var asyncResult = new CopilotAsyncResult(target, Tag);
 
         var options = new MessageOptions { Prompt = Prompt };
 
@@ -152,7 +158,7 @@ public sealed class SendCopilotMessageAsyncCmdlet : PSCmdlet
 public sealed class ReceiveCopilotAsyncResultCmdlet : PSCmdlet
 {
     [Parameter(Mandatory = true, Position = 0, ValueFromPipeline = true)]
-    public CopilotAsyncResult[] Result { get; set; } = null!;
+    public CopilotAsyncResult Result { get; set; } = null!;
 
     [Parameter]
     public TimeSpan Timeout { get; set; } = TimeSpan.FromMinutes(10);
@@ -160,37 +166,34 @@ public sealed class ReceiveCopilotAsyncResultCmdlet : PSCmdlet
     [Parameter]
     public SwitchParameter DisposeSession { get; set; }
 
-    protected override void EndProcessing()
+    protected override void ProcessRecord()
     {
-        foreach (var asyncResult in Result)
+        var asyncResult = Result;
+        try
         {
-            try
+            if (!asyncResult.Wait(Timeout))
             {
-                if (!asyncResult.Wait(Timeout))
-                {
-                    WriteWarning($"[{asyncResult.Tag}] Timed out after {Timeout}");
-                }
-
-                var error = asyncResult.GetError();
-                if (error is not null)
-                {
-                    WriteError(new ErrorRecord(
-                        error, "AsyncSessionError", ErrorCategory.InvalidResult, asyncResult.Tag));
-                }
-
-                // Copy tag onto the result for downstream correlation
-                asyncResult.Result.Tag = asyncResult.Tag;
-                WriteObject(asyncResult.Result);
+                WriteWarning($"[{asyncResult.Tag}] Timed out after {Timeout}");
             }
-            finally
-            {
-                asyncResult.Dispose();
 
-                if (DisposeSession)
-                {
-                    try { asyncResult.Session.DisposeAsync().GetAwaiter().GetResult(); }
-                    catch { /* best-effort cleanup */ }
-                }
+            var error = asyncResult.GetError();
+            if (error is not null)
+            {
+                WriteError(new ErrorRecord(
+                    error, "AsyncSessionError", ErrorCategory.InvalidResult, asyncResult.Tag));
+            }
+
+            asyncResult.Result.Tag = asyncResult.Tag;
+            WriteObject(asyncResult.Result);
+        }
+        finally
+        {
+            asyncResult.Dispose();
+
+            if (DisposeSession)
+            {
+                try { asyncResult.Session.DisposeAsync().GetAwaiter().GetResult(); }
+                catch { /* best-effort cleanup */ }
             }
         }
     }
