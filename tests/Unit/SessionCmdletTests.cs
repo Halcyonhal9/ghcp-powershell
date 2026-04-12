@@ -207,4 +207,20 @@ public class SessionCmdletTests
         Assert.NotNull(attr);
         Assert.Equal(typeof(CopilotSessionCompleter), ((ArgumentCompleterAttribute)attr).Type);
     }
+
+    [Fact]
+    public void NewCopilotSession_HasSkillDirectoriesParameter()
+    {
+        var prop = typeof(NewCopilotSessionCmdlet).GetProperty("SkillDirectories")!;
+        Assert.NotNull(prop);
+        Assert.Equal(typeof(string[]), prop.PropertyType);
+    }
+
+    [Fact]
+    public void ResumeCopilotSession_HasSkillDirectoriesParameter()
+    {
+        var prop = typeof(ResumeCopilotSessionCmdlet).GetProperty("SkillDirectories")!;
+        Assert.NotNull(prop);
+        Assert.Equal(typeof(string[]), prop.PropertyType);
+    }
 }

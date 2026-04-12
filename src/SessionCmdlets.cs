@@ -45,6 +45,9 @@ public sealed class NewCopilotSessionCmdlet : PSCmdlet
     [Parameter]
     public string? Agent { get; set; }
 
+    [Parameter]
+    public string[]? SkillDirectories { get; set; }
+
     protected override void EndProcessing()
     {
         if (!ModuleState.TryRequireClient(Client, out var target, out var noClient))
@@ -70,6 +73,7 @@ public sealed class NewCopilotSessionCmdlet : PSCmdlet
         if (ExcludedTools is not null) config.ExcludedTools = new List<string>(ExcludedTools);
         if (EnableConfigDiscovery) config.EnableConfigDiscovery = true;
         if (Agent is not null) config.Agent = Agent;
+        if (SkillDirectories is not null) config.SkillDirectories = new List<string>(SkillDirectories);
 
         try
         {
@@ -120,6 +124,9 @@ public sealed class ResumeCopilotSessionCmdlet : PSCmdlet
     [Parameter]
     public string? Agent { get; set; }
 
+    [Parameter]
+    public string[]? SkillDirectories { get; set; }
+
     protected override void EndProcessing()
     {
         if (!ModuleState.TryRequireClient(Client, out var target, out var noClient))
@@ -141,6 +148,7 @@ public sealed class ResumeCopilotSessionCmdlet : PSCmdlet
         if (WorkingDirectory is not null) config.WorkingDirectory = WorkingDirectory;
         if (EnableConfigDiscovery) config.EnableConfigDiscovery = true;
         if (Agent is not null) config.Agent = Agent;
+        if (SkillDirectories is not null) config.SkillDirectories = new List<string>(SkillDirectories);
 
         try
         {
