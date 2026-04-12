@@ -17,6 +17,9 @@ public class CopilotMessageResult
 
     /// <summary>All SDK events received during this send (deltas, tool calls, idle, errors, etc.).</summary>
     public List<SessionEvent> Events { get; set; } = new();
+
+    /// <summary>User-supplied tag for correlating async results (e.g. conversation ID).</summary>
+    public string? Tag { get; set; }
 }
 
 [Cmdlet(VerbsCommunications.Send, "CopilotMessage")]
