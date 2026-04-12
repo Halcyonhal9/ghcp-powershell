@@ -326,7 +326,7 @@ public sealed class NewCopilotSectionOverrideCmdlet : PSCmdlet
     }
 }
 
-static class SystemMessageHelper
+internal static class SystemMessageHelper
 {
     internal static SystemMessageConfig? Build(string? content, string? mode, Hashtable? sections)
     {
@@ -335,9 +335,14 @@ static class SystemMessageHelper
 
         var config = new SystemMessageConfig();
         if (content is not null) config.Content = content;
-        if (mode is not null
-            && Enum.TryParse<SystemMessageMode>(mode, ignoreCase: true, out var parsed))
-            config.Mode = parsed;
+        if (mode is not null)
+        {
+            if (Enum.TryParse<SystemMessageMode>(mode, ignoreCase: true, out var parsed))
+                config.Mode = parsed;
+            else
+                throw new ArgumentException(
+                    $"Invalid SystemMessageMode '{mode}'. Valid values: Append, Replace, Customize.");
+        }
         if (sections is not null)
         {
             var dict = new Dictionary<string, SectionOverride>();
@@ -351,12 +356,22 @@ static class SystemMessageHelper
                 else if (entry.Value is Hashtable ht)
                 {
                     var sectionOverride = new SectionOverride();
-                    if (ht["Action"] is string actionStr
-                        && Enum.TryParse<SectionOverrideAction>(actionStr, ignoreCase: true, out var action))
-                        sectionOverride.Action = action;
+                    if (ht["Action"] is string actionStr)
+                    {
+                        if (Enum.TryParse<SectionOverrideAction>(actionStr, ignoreCase: true, out var action))
+                            sectionOverride.Action = action;
+                        else
+                            throw new ArgumentException(
+                                $"Invalid SectionOverrideAction '{actionStr}' for section '{key}'. Valid values: Replace, Remove, Append, Prepend.");
+                    }
                     if (ht["Content"] is string c)
                         sectionOverride.Content = c;
                     dict[key] = sectionOverride;
+                }
+                else
+                {
+                    throw new ArgumentException(
+                        $"Section '{key}' must be a SectionOverride or Hashtable, got {entry.Value?.GetType().Name ?? "null"}.");
                 }
             }
             config.Sections = dict;

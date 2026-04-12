@@ -306,7 +306,16 @@ public class SessionCmdletTests
     }
 
     [Fact]
-    public void SystemMessageHelper_IgnoresNonHashtableAndNonSectionOverrideValues()
+    public void SystemMessageHelper_ThrowsOnInvalidMode()
+    {
+        var ex = Assert.Throws<ArgumentException>(() =>
+            SystemMessageHelper.Build(null, "Appnd", null));
+        Assert.Contains("Invalid SystemMessageMode", ex.Message);
+        Assert.Contains("Appnd", ex.Message);
+    }
+
+    [Fact]
+    public void SystemMessageHelper_ThrowsOnInvalidSectionValueType()
     {
         var sections = new Hashtable
         {
@@ -314,9 +323,23 @@ public class SessionCmdletTests
             ["invalid"] = "just a string"
         };
 
-        var result = SystemMessageHelper.Build(null, null, sections)!;
-        Assert.Single(result.Sections!);
-        Assert.True(result.Sections!.ContainsKey("valid"));
+        var ex = Assert.Throws<ArgumentException>(() =>
+            SystemMessageHelper.Build(null, null, sections));
+        Assert.Contains("invalid", ex.Message);
+    }
+
+    [Fact]
+    public void SystemMessageHelper_ThrowsOnInvalidSectionAction()
+    {
+        var sections = new Hashtable
+        {
+            ["behavior"] = new Hashtable { ["Action"] = "BadAction", ["Content"] = "text" }
+        };
+
+        var ex = Assert.Throws<ArgumentException>(() =>
+            SystemMessageHelper.Build(null, null, sections));
+        Assert.Contains("Invalid SectionOverrideAction", ex.Message);
+        Assert.Contains("BadAction", ex.Message);
     }
 
     [Fact]
