@@ -73,8 +73,8 @@ public sealed class NewCopilotSessionCmdlet : PSCmdlet
 
         if (SessionId is not null) config.SessionId = SessionId;
         if (Model is not null) config.Model = Model;
-        var smc = SystemMessageHelper.Build(SystemMessage, SystemMessageMode, SystemMessageSections);
-        if (smc is not null) config.SystemMessage = smc;
+        var systemMessage = SystemMessageHelper.Build(SystemMessage, SystemMessageMode, SystemMessageSections);
+        if (systemMessage is not null) config.SystemMessage = systemMessage;
         if (ReasoningEffort is not null) config.ReasoningEffort = ReasoningEffort;
         if (InfiniteSessions) config.InfiniteSessions = new InfiniteSessionConfig { Enabled = true };
         if (WorkingDirectory is not null) config.WorkingDirectory = WorkingDirectory;
@@ -159,8 +159,8 @@ public sealed class ResumeCopilotSessionCmdlet : PSCmdlet
         };
 
         if (Model is not null) config.Model = Model;
-        var smc = SystemMessageHelper.Build(SystemMessage, SystemMessageMode, SystemMessageSections);
-        if (smc is not null) config.SystemMessage = smc;
+        var systemMessage = SystemMessageHelper.Build(SystemMessage, SystemMessageMode, SystemMessageSections);
+        if (systemMessage is not null) config.SystemMessage = systemMessage;
         if (ReasoningEffort is not null) config.ReasoningEffort = ReasoningEffort;
         if (WorkingDirectory is not null) config.WorkingDirectory = WorkingDirectory;
         if (EnableConfigDiscovery) config.EnableConfigDiscovery = true;
@@ -336,7 +336,7 @@ static class SystemMessageHelper
         var config = new SystemMessageConfig();
         if (content is not null) config.Content = content;
         if (mode is not null
-            && Enum.TryParse<GitHub.Copilot.SDK.SystemMessageMode>(mode, ignoreCase: true, out var parsed))
+            && Enum.TryParse<SystemMessageMode>(mode, ignoreCase: true, out var parsed))
             config.Mode = parsed;
         if (sections is not null)
         {
