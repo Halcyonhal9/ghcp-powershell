@@ -148,4 +148,90 @@ public class CompleterTests
         Assert.NotNull(attr);
         Assert.Equal(typeof(LogLevelCompleter), ((ArgumentCompleterAttribute)attr).Type);
     }
+
+    [Fact]
+    public void SystemMessageModeCompleter_ImplementsIArgumentCompleter()
+    {
+        var completer = new SystemMessageModeCompleter();
+        Assert.IsAssignableFrom<IArgumentCompleter>(completer);
+    }
+
+    [Fact]
+    public void SystemMessageModeCompleter_ReturnsAllModesForEmptyInput()
+    {
+        var completer = new SystemMessageModeCompleter();
+        var results = completer.CompleteArgument(
+            "New-CopilotSession", "SystemMessageMode", "", null!, new System.Collections.Hashtable())
+            .ToList();
+
+        Assert.Equal(3, results.Count);
+        Assert.Contains(results, r => r.CompletionText == "Append");
+        Assert.Contains(results, r => r.CompletionText == "Replace");
+        Assert.Contains(results, r => r.CompletionText == "Customize");
+    }
+
+    [Fact]
+    public void SystemMessageModeCompleter_FiltersByPrefix()
+    {
+        var completer = new SystemMessageModeCompleter();
+        var results = completer.CompleteArgument(
+            "New-CopilotSession", "SystemMessageMode", "A", null!, new System.Collections.Hashtable())
+            .ToList();
+
+        Assert.Single(results);
+        Assert.Equal("Append", results[0].CompletionText);
+    }
+
+    [Fact]
+    public void NewCopilotSession_SystemMessageModeHasArgumentCompleter()
+    {
+        var prop = typeof(NewCopilotSessionCmdlet).GetProperty("SystemMessageMode")!;
+        var attr = Attribute.GetCustomAttribute(prop, typeof(ArgumentCompleterAttribute));
+        Assert.NotNull(attr);
+        Assert.Equal(typeof(SystemMessageModeCompleter), ((ArgumentCompleterAttribute)attr).Type);
+    }
+
+    [Fact]
+    public void ResumeCopilotSession_SystemMessageModeHasArgumentCompleter()
+    {
+        var prop = typeof(ResumeCopilotSessionCmdlet).GetProperty("SystemMessageMode")!;
+        var attr = Attribute.GetCustomAttribute(prop, typeof(ArgumentCompleterAttribute));
+        Assert.NotNull(attr);
+        Assert.Equal(typeof(SystemMessageModeCompleter), ((ArgumentCompleterAttribute)attr).Type);
+    }
+
+    [Fact]
+    public void SectionOverrideActionCompleter_ImplementsIArgumentCompleter()
+    {
+        var completer = new SectionOverrideActionCompleter();
+        Assert.IsAssignableFrom<IArgumentCompleter>(completer);
+    }
+
+    [Fact]
+    public void SectionOverrideActionCompleter_ReturnsAllActionsForEmptyInput()
+    {
+        var completer = new SectionOverrideActionCompleter();
+        var results = completer.CompleteArgument(
+            "New-CopilotSectionOverride", "Action", "", null!, new System.Collections.Hashtable())
+            .ToList();
+
+        Assert.Equal(4, results.Count);
+        Assert.Contains(results, r => r.CompletionText == "Replace");
+        Assert.Contains(results, r => r.CompletionText == "Remove");
+        Assert.Contains(results, r => r.CompletionText == "Append");
+        Assert.Contains(results, r => r.CompletionText == "Prepend");
+    }
+
+    [Fact]
+    public void SectionOverrideActionCompleter_FiltersByPrefix()
+    {
+        var completer = new SectionOverrideActionCompleter();
+        var results = completer.CompleteArgument(
+            "New-CopilotSectionOverride", "Action", "Re", null!, new System.Collections.Hashtable())
+            .ToList();
+
+        Assert.Equal(2, results.Count);
+        Assert.Contains(results, r => r.CompletionText == "Replace");
+        Assert.Contains(results, r => r.CompletionText == "Remove");
+    }
 }

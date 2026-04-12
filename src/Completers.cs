@@ -117,6 +117,58 @@ public sealed class ReasoningEffortCompleter : IArgumentCompleter
 }
 
 /// <summary>
+/// Provides tab-completion for -SystemMessageMode parameters with known modes.
+/// </summary>
+public sealed class SystemMessageModeCompleter : IArgumentCompleter
+{
+    private static readonly string[] Modes = { "Append", "Replace", "Customize" };
+
+    public IEnumerable<CompletionResult> CompleteArgument(
+        string commandName,
+        string parameterName,
+        string wordToComplete,
+        CommandAst commandAst,
+        IDictionary fakeBoundParameters)
+    {
+        var prefix = wordToComplete ?? string.Empty;
+
+        foreach (var mode in Modes)
+        {
+            if (mode.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                yield return new CompletionResult(mode, mode, CompletionResultType.ParameterValue, mode);
+            }
+        }
+    }
+}
+
+/// <summary>
+/// Provides tab-completion for -Action parameters on New-CopilotSectionOverride.
+/// </summary>
+public sealed class SectionOverrideActionCompleter : IArgumentCompleter
+{
+    private static readonly string[] Actions = { "Replace", "Remove", "Append", "Prepend" };
+
+    public IEnumerable<CompletionResult> CompleteArgument(
+        string commandName,
+        string parameterName,
+        string wordToComplete,
+        CommandAst commandAst,
+        IDictionary fakeBoundParameters)
+    {
+        var prefix = wordToComplete ?? string.Empty;
+
+        foreach (var action in Actions)
+        {
+            if (action.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                yield return new CompletionResult(action, action, CompletionResultType.ParameterValue, action);
+            }
+        }
+    }
+}
+
+/// <summary>
 /// Provides tab-completion for -LogLevel parameters with standard log levels.
 /// </summary>
 public sealed class LogLevelCompleter : IArgumentCompleter

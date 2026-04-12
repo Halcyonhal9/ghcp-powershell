@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Management.Automation;
 using GitHub.Copilot.SDK;
 
@@ -19,6 +20,13 @@ public sealed class NewCopilotSessionCmdlet : PSCmdlet
 
     [Parameter]
     public string? SystemMessage { get; set; }
+
+    [Parameter]
+    [ArgumentCompleter(typeof(SystemMessageModeCompleter))]
+    public string? SystemMessageMode { get; set; }
+
+    [Parameter]
+    public Hashtable? SystemMessageSections { get; set; }
 
     [Parameter]
     [ArgumentCompleter(typeof(ReasoningEffortCompleter))]
@@ -65,7 +73,8 @@ public sealed class NewCopilotSessionCmdlet : PSCmdlet
 
         if (SessionId is not null) config.SessionId = SessionId;
         if (Model is not null) config.Model = Model;
-        if (SystemMessage is not null) config.SystemMessage = new SystemMessageConfig { Content = SystemMessage };
+        var smc = SystemMessageHelper.Build(SystemMessage, SystemMessageMode, SystemMessageSections);
+        if (smc is not null) config.SystemMessage = smc;
         if (ReasoningEffort is not null) config.ReasoningEffort = ReasoningEffort;
         if (InfiniteSessions) config.InfiniteSessions = new InfiniteSessionConfig { Enabled = true };
         if (WorkingDirectory is not null) config.WorkingDirectory = WorkingDirectory;
@@ -112,6 +121,13 @@ public sealed class ResumeCopilotSessionCmdlet : PSCmdlet
     public string? SystemMessage { get; set; }
 
     [Parameter]
+    [ArgumentCompleter(typeof(SystemMessageModeCompleter))]
+    public string? SystemMessageMode { get; set; }
+
+    [Parameter]
+    public Hashtable? SystemMessageSections { get; set; }
+
+    [Parameter]
     [ArgumentCompleter(typeof(ReasoningEffortCompleter))]
     public string? ReasoningEffort { get; set; }
 
@@ -143,7 +159,8 @@ public sealed class ResumeCopilotSessionCmdlet : PSCmdlet
         };
 
         if (Model is not null) config.Model = Model;
-        if (SystemMessage is not null) config.SystemMessage = new SystemMessageConfig { Content = SystemMessage };
+        var smc = SystemMessageHelper.Build(SystemMessage, SystemMessageMode, SystemMessageSections);
+        if (smc is not null) config.SystemMessage = smc;
         if (ReasoningEffort is not null) config.ReasoningEffort = ReasoningEffort;
         if (WorkingDirectory is not null) config.WorkingDirectory = WorkingDirectory;
         if (EnableConfigDiscovery) config.EnableConfigDiscovery = true;
@@ -279,5 +296,71 @@ public sealed class CloseCopilotSessionCmdlet : PSCmdlet
         {
             ModuleState.CurrentSession = null;
         }
+    }
+}
+
+[Cmdlet(VerbsCommon.New, "CopilotSectionOverride")]
+[OutputType(typeof(SectionOverride))]
+public sealed class NewCopilotSectionOverrideCmdlet : PSCmdlet
+{
+    [Parameter(Mandatory = true, Position = 0)]
+    [ArgumentCompleter(typeof(SectionOverrideActionCompleter))]
+    public string Action { get; set; } = null!;
+
+    [Parameter(Position = 1)]
+    public string? Content { get; set; }
+
+    protected override void EndProcessing()
+    {
+        if (!Enum.TryParse<SectionOverrideAction>(Action, ignoreCase: true, out var action))
+        {
+            ThrowTerminatingError(new ErrorRecord(
+                new ArgumentException($"Invalid action '{Action}'. Valid values: Replace, Remove, Append, Prepend."),
+                "InvalidSectionAction", ErrorCategory.InvalidArgument, Action));
+            return;
+        }
+
+        var sectionOverride = new SectionOverride { Action = action };
+        if (Content is not null) sectionOverride.Content = Content;
+        WriteObject(sectionOverride);
+    }
+}
+
+static class SystemMessageHelper
+{
+    internal static SystemMessageConfig? Build(string? content, string? mode, Hashtable? sections)
+    {
+        if (content is null && mode is null && sections is null)
+            return null;
+
+        var config = new SystemMessageConfig();
+        if (content is not null) config.Content = content;
+        if (mode is not null
+            && Enum.TryParse<GitHub.Copilot.SDK.SystemMessageMode>(mode, ignoreCase: true, out var parsed))
+            config.Mode = parsed;
+        if (sections is not null)
+        {
+            var dict = new Dictionary<string, SectionOverride>();
+            foreach (DictionaryEntry entry in sections)
+            {
+                var key = entry.Key.ToString()!;
+                if (entry.Value is SectionOverride so)
+                {
+                    dict[key] = so;
+                }
+                else if (entry.Value is Hashtable ht)
+                {
+                    var sectionOverride = new SectionOverride();
+                    if (ht["Action"] is string actionStr
+                        && Enum.TryParse<SectionOverrideAction>(actionStr, ignoreCase: true, out var action))
+                        sectionOverride.Action = action;
+                    if (ht["Content"] is string c)
+                        sectionOverride.Content = c;
+                    dict[key] = sectionOverride;
+                }
+            }
+            config.Sections = dict;
+        }
+        return config;
     }
 }
