@@ -11,6 +11,7 @@ public class CopilotAsyncResult : IDisposable
 {
     private readonly ManualResetEventSlim _idleSignal = new(false);
     private readonly CancellationTokenSource _cts = new();
+    private readonly object _eventLock = new();
     private IDisposable? _subscription;
     private volatile Exception? _sessionError;
     private volatile bool _disposed;
@@ -42,24 +43,27 @@ public class CopilotAsyncResult : IDisposable
 
     private void OnEvent(SessionEvent sessionEvent)
     {
-        Result.Events.Add(sessionEvent);
-
-        switch (sessionEvent)
+        lock (_eventLock)
         {
-            case AssistantMessageEvent msg:
-                Result.MessageId = msg.Data.MessageId;
-                Result.Content = msg.Data.Content ?? string.Empty;
-                break;
+            Result.Events.Add(sessionEvent);
 
-            case SessionIdleEvent:
-                _idleSignal.Set();
-                break;
+            switch (sessionEvent)
+            {
+                case AssistantMessageEvent msg:
+                    Result.MessageId = msg.Data.MessageId;
+                    Result.Content = msg.Data.Content ?? string.Empty;
+                    break;
 
-            case SessionErrorEvent error:
-                _sessionError = new Exception(
-                    $"Session error ({error.Data.ErrorType}): {error.Data.Message}");
-                _idleSignal.Set();
-                break;
+                case SessionIdleEvent:
+                    _idleSignal.Set();
+                    break;
+
+                case SessionErrorEvent error:
+                    _sessionError = new Exception(
+                        $"Session error ({error.Data.ErrorType}): {error.Data.Message}");
+                    _idleSignal.Set();
+                    break;
+            }
         }
     }
 
@@ -112,6 +116,13 @@ public sealed class SendCopilotMessageAsyncCmdlet : PSCmdlet
     [Parameter]
     public string[]? Attachment { get; set; }
 
+    /// <summary>Base64-encoded binary data to attach inline (e.g. an image). Use with -BlobMimeType.</summary>
+    [Parameter]
+    public string? BlobData { get; set; }
+
+    [Parameter]
+    public string? BlobMimeType { get; set; }
+
     protected override void EndProcessing()
     {
         if (!ModuleState.TryRequireSession(Session, out var target, out var noSession))
@@ -124,15 +135,31 @@ public sealed class SendCopilotMessageAsyncCmdlet : PSCmdlet
 
         var options = new MessageOptions { Prompt = Prompt };
 
+        var attachments = new List<UserMessageDataAttachmentsItem>();
+
         if (Attachment is { Length: > 0 })
         {
-            options.Attachments = Attachment.Select(path =>
+            attachments.AddRange(Attachment.Select(path =>
                 (UserMessageDataAttachmentsItem)new UserMessageDataAttachmentsItemFile
                 {
                     Path = path,
                     DisplayName = System.IO.Path.GetFileName(path),
                     Type = "file"
-                }).ToList();
+                }));
+        }
+
+        if (BlobData is not null)
+        {
+            attachments.Add(new UserMessageDataAttachmentsItemBlob
+            {
+                Data = BlobData,
+                MimeType = BlobMimeType ?? "application/octet-stream"
+            });
+        }
+
+        if (attachments.Count > 0)
+        {
+            options.Attachments = attachments;
         }
 
         try
