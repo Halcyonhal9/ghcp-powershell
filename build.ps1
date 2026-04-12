@@ -11,7 +11,10 @@ param(
     [switch]$MajorBuild,
 
     [Parameter(ParameterSetName = 'Release')]
-    [switch]$PublishToGallery
+    [switch]$PublishToGallery,
+
+    [Parameter(ParameterSetName = 'Release')]
+    [switch]$NoPrompt
 )
 
 $ErrorActionPreference = 'Stop'
@@ -161,6 +164,7 @@ function Publish-ToGallery {
 }
 
 if ($Release) {
+    if ($NoPrompt) { $ConfirmPreference = 'None' }
     $version = Update-ManifestVersion -MajorBuild:$MajorBuild -MinorBuild:$MinorBuild
     Invoke-Build
     New-ModuleStage
