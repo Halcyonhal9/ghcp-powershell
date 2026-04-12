@@ -1,6 +1,6 @@
 @{
     RootModule           = 'CopilotCmdlets.dll'
-    ModuleVersion     = '0.4.3'
+    ModuleVersion     = '0.4.4'
     GUID                 = 'a7f3d8e1-4b2c-4f9a-8e6d-1c3b5a7f9e2d'
     Author               = 'Ben Appleby'
     Description          = 'PowerShell Cmdlets for the GitHub Copilot SDK'
@@ -16,6 +16,8 @@
         'Remove-CopilotSession'
         'Close-CopilotSession'
         'Send-CopilotMessage'
+        'Send-CopilotMessageAsync'
+        'Receive-CopilotAsyncResult'
         'Get-CopilotMessage'
         'Get-CopilotModel'
         'Set-CopilotModel'
