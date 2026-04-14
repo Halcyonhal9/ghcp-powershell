@@ -24,7 +24,7 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
-    environment: CopilotCmldetsEnv
+    environment: CopilotCmdletsEnv
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -116,7 +116,6 @@ jobs:
             Copy-Item $manifest -Destination $ridStage -Force
 
             $zipPath = Join-Path $root "CopilotCmdlets-$version-$rid.zip"
-            if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
             Compress-Archive -Path (Join-Path $ridStage '*') -DestinationPath $zipPath -Force
             Write-Host "Created $zipPath"
             $zipPaths += $zipPath
@@ -154,7 +153,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $tag      = '${{ steps.version.outputs.tag }}'
-          $version  = '${{ steps.version.outputs.version }}'
           $zipPaths = '${{ steps.artifacts.outputs.zip_paths }}' -split "`n" | Where-Object { $_ }
 
           Write-Host "Creating release $tag with assets:"
@@ -163,7 +161,7 @@ jobs:
           gh release create $tag @zipPaths --title $tag --notes "Release $tag"
 
       - name: Publish to PowerShell Gallery
-        if: ${{ inputs.publish_to_gallery }}
+        if: inputs.publish_to_gallery
         shell: pwsh
         env:
           POWERSHELL_GALLERY_API_KEY: ${{ secrets.POWERSHELL_GALLERY_API_KEY }}
