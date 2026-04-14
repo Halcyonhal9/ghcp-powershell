@@ -20,6 +20,18 @@ public class CopilotMessageResult
 
     /// <summary>User-supplied tag for correlating async results (e.g. conversation ID).</summary>
     public string? Tag { get; set; }
+
+    /// <summary>Per-LLM-call usage events received during this send.</summary>
+    public List<AssistantUsageData> UsageEvents { get; set; } = new();
+
+    /// <summary>Aggregated input tokens across all LLM calls in this message.</summary>
+    public double TotalInputTokens => UsageEvents.Sum(u => u.InputTokens ?? 0);
+
+    /// <summary>Aggregated output tokens across all LLM calls in this message.</summary>
+    public double TotalOutputTokens => UsageEvents.Sum(u => u.OutputTokens ?? 0);
+
+    /// <summary>Context window state at last usage_info event.</summary>
+    public SessionUsageInfoData? ContextWindow { get; set; }
 }
 
 [Cmdlet(VerbsCommunications.Send, "CopilotMessage")]
@@ -91,6 +103,16 @@ public sealed class SendCopilotMessageCmdlet : PSCmdlet
                 case ToolExecutionCompleteEvent toolEnd:
                     var status = toolEnd.Data.Success ? "completed" : "failed";
                     Console.Error.WriteLine($"[Tool] {status} (id: {toolEnd.Data.ToolCallId})");
+                    break;
+
+                case AssistantUsageEvent usage:
+                    result.UsageEvents.Add(usage.Data);
+                    Console.Error.WriteLine(
+                        $"[Usage] {usage.Data.Model}: in={usage.Data.InputTokens}, out={usage.Data.OutputTokens}, cost={usage.Data.Cost}");
+                    break;
+
+                case SessionUsageInfoEvent usageInfo:
+                    result.ContextWindow = usageInfo.Data;
                     break;
 
                 case SessionIdleEvent:

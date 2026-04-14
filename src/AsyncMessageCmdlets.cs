@@ -54,6 +54,14 @@ public class CopilotAsyncResult : IDisposable
                     Result.Content = msg.Data.Content ?? string.Empty;
                     break;
 
+                case AssistantUsageEvent usage:
+                    Result.UsageEvents.Add(usage.Data);
+                    break;
+
+                case SessionUsageInfoEvent usageInfo:
+                    Result.ContextWindow = usageInfo.Data;
+                    break;
+
                 case SessionIdleEvent:
                     _idleSignal.Set();
                     break;
