@@ -82,7 +82,9 @@ jobs:
 
       - name: Checkout release tag
         if: steps.version.outputs.is_new == 'false'
-        run: git checkout ${{ steps.version.outputs.tag }}
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: git checkout "$RELEASE_TAG"
 
       - name: Update module manifest version
         if: steps.version.outputs.is_new == 'true'
