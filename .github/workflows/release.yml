@@ -1,0 +1,187 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_bump:
+        description: "Version bump type"
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
+      publish_to_gallery:
+        description: "Publish to PowerShell Gallery"
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: CopilotCmdletsEnv
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Determine new version
+        id: version
+        shell: pwsh
+        run: |
+          # Find latest release tag to compute the next version
+          $tag = git describe --tags --abbrev=0 2>$null
+          if ($LASTEXITCODE -ne 0 -or -not $tag) {
+            $major = 0; $minor = 0; $patch = 0
+          } elseif ($tag -match '^v?(\d+)\.(\d+)\.(\d+)$') {
+            $major = [int]$Matches[1]; $minor = [int]$Matches[2]; $patch = [int]$Matches[3]
+          } else {
+            Write-Error "Could not parse version from tag '$tag'"
+            exit 1
+          }
+
+          switch ('${{ inputs.version_bump }}') {
+            'major' { $newVersion = "$($major + 1).0.0" }
+            'minor' { $newVersion = "$major.$($minor + 1).0" }
+            default { $newVersion = "$major.$minor.$($patch + 1)" }
+          }
+
+          Write-Host "Version: $major.$minor.$patch -> $newVersion"
+          "version=$newVersion" >> $env:GITHUB_OUTPUT
+          "tag=v$newVersion"    >> $env:GITHUB_OUTPUT
+
+      - name: Update module manifest version
+        shell: pwsh
+        run: |
+          $manifest = Join-Path $env:GITHUB_WORKSPACE 'CopilotCmdlets.psd1'
+          $content  = Get-Content $manifest -Raw
+          $updated  = $content -replace "ModuleVersion\s*=\s*'\d+\.\d+\.\d+'", "ModuleVersion     = '${{ steps.version.outputs.version }}'"
+          Set-Content -Path $manifest -Value $updated -NoNewline
+          Write-Host "Updated manifest to ${{ steps.version.outputs.version }}"
+
+      - name: Run unit tests
+        run: dotnet test tests/CopilotCmdlets.Tests.csproj --filter "Category=Unit"
+
+      - name: Build all platforms
+        shell: pwsh
+        run: |
+          $project  = Join-Path $env:GITHUB_WORKSPACE 'src/CopilotCmdlets.csproj'
+          $outDir   = Join-Path $env:GITHUB_WORKSPACE 'out'
+          $runtimes = @('win-x64', 'linux-x64', 'linux-arm64', 'osx-arm64')
+
+          foreach ($rid in $runtimes) {
+            $ridOut = Join-Path $outDir $rid
+            Write-Host "Publishing $rid -> $ridOut"
+            dotnet publish $project -c Release -r $rid --self-contained false -o $ridOut
+            if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed for $rid" }
+          }
+
+          # RID-neutral gallery build
+          $galleryDir = Join-Path $outDir 'gallery'
+          Write-Host "Publishing RID-neutral gallery build -> $galleryDir"
+          dotnet publish $project -c Release -o $galleryDir
+          if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed for gallery build" }
+
+      - name: Stage module files and create release zips
+        id: artifacts
+        shell: pwsh
+        run: |
+          $root       = $env:GITHUB_WORKSPACE
+          $outDir     = Join-Path $root 'out'
+          $manifest   = Join-Path $root 'CopilotCmdlets.psd1'
+          $runtimes   = @('win-x64', 'linux-x64', 'linux-arm64', 'osx-arm64')
+          $version    = '${{ steps.version.outputs.version }}'
+          $galleryDir = Join-Path $outDir 'gallery'
+
+          # Stage per-RID builds and create zips
+          $zipPaths = @()
+          foreach ($rid in $runtimes) {
+            $ridOut   = Join-Path $outDir $rid
+            $ridStage = Join-Path $ridOut 'CopilotCmdlets'
+
+            if (Test-Path $ridStage) { Remove-Item $ridStage -Recurse -Force }
+            New-Item -ItemType Directory -Force -Path $ridStage | Out-Null
+
+            Get-ChildItem -Path $ridOut -Force |
+              Where-Object { $_.FullName -ne $ridStage } |
+              Copy-Item -Destination $ridStage -Recurse -Force
+            Copy-Item $manifest -Destination $ridStage -Force
+
+            $zipPath = Join-Path $root "CopilotCmdlets-$version-$rid.zip"
+            Compress-Archive -Path (Join-Path $ridStage '*') -DestinationPath $zipPath -Force
+            Write-Host "Created $zipPath"
+            $zipPaths += $zipPath
+          }
+
+          # Stage gallery build
+          $galleryStage = Join-Path $galleryDir 'CopilotCmdlets'
+          if (Test-Path $galleryStage) { Remove-Item $galleryStage -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $galleryStage | Out-Null
+          Get-ChildItem -Path $galleryDir -Force |
+            Where-Object { $_.FullName -ne $galleryStage } |
+            Copy-Item -Destination $galleryStage -Recurse -Force
+          Copy-Item $manifest -Destination $galleryStage -Force
+
+          # Output zip paths (newline-separated) for the release step
+          $joined = $zipPaths -join "`n"
+          # Use a delimiter for multi-line output
+          $delimiter = "EOF_$(Get-Random)"
+          "zip_paths<<$delimiter"  >> $env:GITHUB_OUTPUT
+          $joined                  >> $env:GITHUB_OUTPUT
+          $delimiter               >> $env:GITHUB_OUTPUT
+
+      - name: Commit version bump
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CopilotCmdlets.psd1
+          git diff --cached --quiet || git commit -m "Release ${{ steps.version.outputs.tag }}"
+          if ! git tag --list "${{ steps.version.outputs.tag }}" | grep -q .; then
+            git tag "${{ steps.version.outputs.tag }}"
+          fi
+          git push origin HEAD "${{ steps.version.outputs.tag }}"
+
+      - name: Create GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag      = '${{ steps.version.outputs.tag }}'
+          $zipPaths = '${{ steps.artifacts.outputs.zip_paths }}' -split "`n" | Where-Object { $_ }
+
+          Write-Host "Creating release $tag with assets:"
+          $zipPaths | ForEach-Object { Write-Host "  $_" }
+
+          $existing = gh release view $tag --json tagName 2>$null
+          if ($existing) {
+            Write-Host "Release $tag already exists — uploading assets"
+            gh release upload $tag @zipPaths --clobber
+          } else {
+            gh release create $tag @zipPaths --title $tag --notes "Release $tag"
+          }
+
+      - name: Publish to PowerShell Gallery
+        if: inputs.publish_to_gallery
+        shell: pwsh
+        env:
+          POWERSHELL_GALLERY_API_KEY: ${{ secrets.POWERSHELL_GALLERY_API_KEY }}
+        run: |
+          $galleryStage = Join-Path $env:GITHUB_WORKSPACE 'out/gallery/CopilotCmdlets'
+          Write-Host "Publishing CopilotCmdlets ${{ steps.version.outputs.version }} to PowerShell Gallery"
+          Publish-Module -Path $galleryStage -NuGetApiKey $env:POWERSHELL_GALLERY_API_KEY
+          Write-Host "Successfully published to PowerShell Gallery"
