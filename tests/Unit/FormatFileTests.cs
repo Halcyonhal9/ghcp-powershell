@@ -46,40 +46,17 @@ public class FormatFileTests
         Assert.Equal("Configuration", doc.Root!.Name.LocalName);
     }
 
-    [Fact]
-    public void FormatFile_ContainsModelInfoTableView()
+    [Theory]
+    [InlineData("ModelInfo_Table", "GitHub.Copilot.SDK.ModelInfo")]
+    [InlineData("ModelInfo_List", "GitHub.Copilot.SDK.ModelInfo")]
+    [InlineData("SessionMetadata_Table", "GitHub.Copilot.SDK.SessionMetadata")]
+    [InlineData("SessionMetadata_List", "GitHub.Copilot.SDK.SessionMetadata")]
+    public void FormatFile_ContainsExpectedView(string viewName, string typeName)
     {
         var views = LoadFormatDoc().Descendants("View");
         Assert.Contains(views, v =>
-            v.Element("Name")?.Value == "ModelInfo_Table" &&
-            v.Descendants("TypeName").Any(t => t.Value == "GitHub.Copilot.SDK.ModelInfo"));
-    }
-
-    [Fact]
-    public void FormatFile_ContainsModelInfoListView()
-    {
-        var views = LoadFormatDoc().Descendants("View");
-        Assert.Contains(views, v =>
-            v.Element("Name")?.Value == "ModelInfo_List" &&
-            v.Descendants("TypeName").Any(t => t.Value == "GitHub.Copilot.SDK.ModelInfo"));
-    }
-
-    [Fact]
-    public void FormatFile_ContainsSessionMetadataTableView()
-    {
-        var views = LoadFormatDoc().Descendants("View");
-        Assert.Contains(views, v =>
-            v.Element("Name")?.Value == "SessionMetadata_Table" &&
-            v.Descendants("TypeName").Any(t => t.Value == "GitHub.Copilot.SDK.SessionMetadata"));
-    }
-
-    [Fact]
-    public void FormatFile_ContainsSessionMetadataListView()
-    {
-        var views = LoadFormatDoc().Descendants("View");
-        Assert.Contains(views, v =>
-            v.Element("Name")?.Value == "SessionMetadata_List" &&
-            v.Descendants("TypeName").Any(t => t.Value == "GitHub.Copilot.SDK.SessionMetadata"));
+            v.Element("Name")?.Value == viewName &&
+            v.Descendants("TypeName").Any(t => t.Value == typeName));
     }
 
     [Fact]
