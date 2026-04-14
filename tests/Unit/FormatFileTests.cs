@@ -7,10 +7,12 @@ namespace CopilotCmdlets.Tests.Unit;
 [Trait("Category", "Unit")]
 public class FormatFileTests
 {
+    private const int MaxSearchDepth = 5;
+
     private static string? TryFindFormatFile()
     {
         var dir = AppContext.BaseDirectory;
-        for (var depth = 0; depth < 5 && dir is not null; depth++)
+        for (var depth = 0; depth < MaxSearchDepth && dir is not null; depth++)
         {
             var candidate = Path.Combine(dir, "CopilotCmdlets.format.ps1xml");
             if (File.Exists(candidate)) return candidate;
