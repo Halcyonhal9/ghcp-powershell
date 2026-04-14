@@ -10,7 +10,7 @@ public class FormatFileTests
     private static string? TryFindFormatFile()
     {
         var dir = AppContext.BaseDirectory;
-        while (dir is not null)
+        for (var depth = 0; depth < 5 && dir is not null; depth++)
         {
             var candidate = Path.Combine(dir, "CopilotCmdlets.format.ps1xml");
             if (File.Exists(candidate)) return candidate;

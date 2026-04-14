@@ -14,10 +14,10 @@
         <TableHeaders>
           <TableColumnHeader><Label>Name</Label></TableColumnHeader>
           <TableColumnHeader><Label>Id</Label></TableColumnHeader>
-          <TableColumnHeader><Label>Vision</Label></TableColumnHeader>
-          <TableColumnHeader><Label>Reasoning</Label></TableColumnHeader>
-          <TableColumnHeader><Label>Billing</Label></TableColumnHeader>
-          <TableColumnHeader><Label>Policy</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Vision</Label><Width>8</Width></TableColumnHeader>
+          <TableColumnHeader><Label>Reasoning</Label><Width>10</Width></TableColumnHeader>
+          <TableColumnHeader><Label>Billing</Label><Width>8</Width></TableColumnHeader>
+          <TableColumnHeader><Label>Policy</Label><Width>10</Width></TableColumnHeader>
         </TableHeaders>
         <TableRowEntries>
           <TableRowEntry>
