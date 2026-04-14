@@ -7,10 +7,7 @@ namespace CopilotCmdlets.Tests.Unit;
 [Trait("Category", "Unit")]
 public class FormatFileTests
 {
-    private static readonly string FormatFilePath = FindFormatFile();
-    private static readonly Lazy<XDocument> FormatDoc = new(() => XDocument.Load(FormatFilePath));
-
-    private static string FindFormatFile()
+    private static string? TryFindFormatFile()
     {
         var dir = AppContext.BaseDirectory;
         while (dir is not null)
@@ -19,19 +16,32 @@ public class FormatFileTests
             if (File.Exists(candidate)) return candidate;
             dir = Path.GetDirectoryName(dir);
         }
-        throw new FileNotFoundException("CopilotCmdlets.format.ps1xml not found relative to test assembly.");
+        return null;
+    }
+
+    private static string RequireFormatFile()
+    {
+        var path = TryFindFormatFile();
+        Assert.NotNull(path);
+        return path!;
+    }
+
+    private static XDocument LoadFormatDoc()
+    {
+        return XDocument.Load(RequireFormatFile());
     }
 
     [Fact]
     public void FormatFile_Exists()
     {
-        Assert.True(File.Exists(FormatFilePath), $"Format file not found at {FormatFilePath}");
+        var path = TryFindFormatFile();
+        Assert.True(path is not null, "CopilotCmdlets.format.ps1xml not found relative to test assembly.");
     }
 
     [Fact]
     public void FormatFile_IsValidXml()
     {
-        var doc = FormatDoc.Value;
+        var doc = LoadFormatDoc();
         Assert.NotNull(doc.Root);
         Assert.Equal("Configuration", doc.Root!.Name.LocalName);
     }
@@ -39,7 +49,7 @@ public class FormatFileTests
     [Fact]
     public void FormatFile_ContainsModelInfoTableView()
     {
-        var views = FormatDoc.Value.Descendants("View");
+        var views = LoadFormatDoc().Descendants("View");
         Assert.Contains(views, v =>
             v.Element("Name")?.Value == "ModelInfo_Table" &&
             v.Descendants("TypeName").Any(t => t.Value == "GitHub.Copilot.SDK.ModelInfo"));
@@ -48,7 +58,7 @@ public class FormatFileTests
     [Fact]
     public void FormatFile_ContainsModelInfoListView()
     {
-        var views = FormatDoc.Value.Descendants("View");
+        var views = LoadFormatDoc().Descendants("View");
         Assert.Contains(views, v =>
             v.Element("Name")?.Value == "ModelInfo_List" &&
             v.Descendants("TypeName").Any(t => t.Value == "GitHub.Copilot.SDK.ModelInfo"));
@@ -57,7 +67,7 @@ public class FormatFileTests
     [Fact]
     public void FormatFile_ContainsSessionMetadataTableView()
     {
-        var views = FormatDoc.Value.Descendants("View");
+        var views = LoadFormatDoc().Descendants("View");
         Assert.Contains(views, v =>
             v.Element("Name")?.Value == "SessionMetadata_Table" &&
             v.Descendants("TypeName").Any(t => t.Value == "GitHub.Copilot.SDK.SessionMetadata"));
@@ -66,7 +76,7 @@ public class FormatFileTests
     [Fact]
     public void FormatFile_ContainsSessionMetadataListView()
     {
-        var views = FormatDoc.Value.Descendants("View");
+        var views = LoadFormatDoc().Descendants("View");
         Assert.Contains(views, v =>
             v.Element("Name")?.Value == "SessionMetadata_List" &&
             v.Descendants("TypeName").Any(t => t.Value == "GitHub.Copilot.SDK.SessionMetadata"));
@@ -75,7 +85,7 @@ public class FormatFileTests
     [Fact]
     public void FormatFile_ModelInfoTableFlattensCapabilities()
     {
-        var modelTable = FormatDoc.Value.Descendants("View")
+        var modelTable = LoadFormatDoc().Descendants("View")
             .First(v => v.Element("Name")?.Value == "ModelInfo_Table");
 
         var scriptBlocks = modelTable.Descendants("ScriptBlock").Select(s => s.Value).ToList();
@@ -88,7 +98,7 @@ public class FormatFileTests
     [Fact]
     public void FormatFile_SessionMetadataTableFlattensContext()
     {
-        var sessionTable = FormatDoc.Value.Descendants("View")
+        var sessionTable = LoadFormatDoc().Descendants("View")
             .First(v => v.Element("Name")?.Value == "SessionMetadata_Table");
 
         var scriptBlocks = sessionTable.Descendants("ScriptBlock").Select(s => s.Value).ToList();
@@ -99,7 +109,8 @@ public class FormatFileTests
     [Fact]
     public void ModuleManifest_ReferencesFormatFile()
     {
-        var dir = Path.GetDirectoryName(FormatFilePath)!;
+        var formatPath = RequireFormatFile();
+        var dir = Path.GetDirectoryName(formatPath)!;
         var psd1Path = Path.Combine(dir, "CopilotCmdlets.psd1");
         Assert.True(File.Exists(psd1Path), $"Module manifest not found at {psd1Path}");
 
