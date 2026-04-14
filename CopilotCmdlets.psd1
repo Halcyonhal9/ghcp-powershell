@@ -6,6 +6,7 @@
     Description          = 'PowerShell Cmdlets for the GitHub Copilot SDK'
     PowerShellVersion    = '7.4'
     CompatiblePSEditions = @('Core')
+    FormatsToProcess     = @('CopilotCmdlets.format.ps1xml')
     CmdletsToExport      = @(
         'New-CopilotClient'
         'Stop-CopilotClient'

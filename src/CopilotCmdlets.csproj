@@ -14,6 +14,7 @@
 
   <ItemGroup>
     <None Include="../CopilotCmdlets.psd1" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../CopilotCmdlets.format.ps1xml" CopyToOutputDirectory="PreserveNewest" />
     <InternalsVisibleTo Include="CopilotCmdlets.Tests" />
   </ItemGroup>
 
