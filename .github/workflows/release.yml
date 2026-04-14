@@ -21,6 +21,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -69,6 +73,9 @@ jobs:
           $updated  = $content -replace "ModuleVersion\s*=\s*'\d+\.\d+\.\d+'", "ModuleVersion     = '${{ steps.version.outputs.version }}'"
           Set-Content -Path $manifest -Value $updated -NoNewline
           Write-Host "Updated manifest to ${{ steps.version.outputs.version }}"
+
+      - name: Run unit tests
+        run: dotnet test tests/CopilotCmdlets.Tests.csproj --filter "Category=Unit"
 
       - name: Build all platforms
         shell: pwsh
@@ -144,7 +151,9 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add CopilotCmdlets.psd1
           git diff --cached --quiet || git commit -m "Release ${{ steps.version.outputs.tag }}"
-          git tag "${{ steps.version.outputs.tag }}"
+          if ! git tag --list "${{ steps.version.outputs.tag }}" | grep -q .; then
+            git tag "${{ steps.version.outputs.tag }}"
+          fi
           git push origin HEAD "${{ steps.version.outputs.tag }}"
 
       - name: Create GitHub Release
@@ -158,7 +167,13 @@ jobs:
           Write-Host "Creating release $tag with assets:"
           $zipPaths | ForEach-Object { Write-Host "  $_" }
 
-          gh release create $tag @zipPaths --title $tag --notes "Release $tag"
+          $existing = gh release view $tag --json tagName 2>$null
+          if ($existing) {
+            Write-Host "Release $tag already exists — uploading assets"
+            gh release upload $tag @zipPaths --clobber
+          } else {
+            gh release create $tag @zipPaths --title $tag --notes "Release $tag"
+          }
 
       - name: Publish to PowerShell Gallery
         if: inputs.publish_to_gallery
