@@ -120,5 +120,31 @@
       </ListControl>
     </View>
 
+    <!-- ============================================================ -->
+    <!-- CopilotMessageResult – list view (Format-List)                -->
+    <!-- ============================================================ -->
+    <View>
+      <Name>CopilotMessageResult_List</Name>
+      <ViewSelectedBy>
+        <TypeName>CopilotCmdlets.CopilotMessageResult</TypeName>
+      </ViewSelectedBy>
+      <ListControl>
+        <ListEntries>
+          <ListEntry>
+            <ListItems>
+              <ListItem><PropertyName>MessageId</PropertyName></ListItem>
+              <ListItem><PropertyName>SessionId</PropertyName></ListItem>
+              <ListItem><PropertyName>Content</PropertyName></ListItem>
+              <ListItem><PropertyName>TotalInputTokens</PropertyName></ListItem>
+              <ListItem><PropertyName>TotalOutputTokens</PropertyName></ListItem>
+              <ListItem><Label>ContextTokens</Label><ScriptBlock>if ($_.ContextWindow) { $_.ContextWindow.CurrentTokens }</ScriptBlock></ListItem>
+              <ListItem><Label>ContextLimit</Label><ScriptBlock>if ($_.ContextWindow) { $_.ContextWindow.TokenLimit }</ScriptBlock></ListItem>
+              <ListItem><Label>UsageCalls</Label><ScriptBlock>$_.UsageEvents.Count</ScriptBlock></ListItem>
+            </ListItems>
+          </ListEntry>
+        </ListEntries>
+      </ListControl>
+    </View>
+
   </ViewDefinitions>
 </Configuration>

@@ -73,6 +73,11 @@ public class MessageCmdletTests
         Assert.Null(result.SessionId);
         Assert.NotNull(result.Events);
         Assert.Empty(result.Events);
+        Assert.NotNull(result.UsageEvents);
+        Assert.Empty(result.UsageEvents);
+        Assert.Equal(0, result.TotalInputTokens);
+        Assert.Equal(0, result.TotalOutputTokens);
+        Assert.Null(result.ContextWindow);
     }
 
     [Fact]
@@ -101,6 +106,63 @@ public class MessageCmdletTests
         result.Events.Add(event2);
 
         Assert.Equal(2, result.Events.Count);
+    }
+
+    [Fact]
+    public void CopilotMessageResult_TotalInputTokens_SumsUsageEvents()
+    {
+        var result = new CopilotMessageResult();
+        result.UsageEvents.Add(new AssistantUsageData { Model = "gpt-4", InputTokens = 100, OutputTokens = 50 });
+        result.UsageEvents.Add(new AssistantUsageData { Model = "gpt-4", InputTokens = 200, OutputTokens = 75 });
+
+        Assert.Equal(300, result.TotalInputTokens);
+        Assert.Equal(125, result.TotalOutputTokens);
+    }
+
+    [Fact]
+    public void CopilotMessageResult_TotalTokens_HandlesNullValues()
+    {
+        var result = new CopilotMessageResult();
+        result.UsageEvents.Add(new AssistantUsageData { Model = "gpt-4", InputTokens = 100, OutputTokens = null });
+        result.UsageEvents.Add(new AssistantUsageData { Model = "gpt-4", InputTokens = null, OutputTokens = 50 });
+
+        Assert.Equal(100, result.TotalInputTokens);
+        Assert.Equal(50, result.TotalOutputTokens);
+    }
+
+    [Fact]
+    public void CopilotMessageResult_ContextWindow_CanBeSet()
+    {
+        var result = new CopilotMessageResult();
+        var contextData = new SessionUsageInfoData
+        {
+            TokenLimit = 128000,
+            CurrentTokens = 5000,
+            MessagesLength = 10
+        };
+
+        result.ContextWindow = contextData;
+
+        Assert.NotNull(result.ContextWindow);
+        Assert.Equal(128000, result.ContextWindow.TokenLimit);
+        Assert.Equal(5000, result.ContextWindow.CurrentTokens);
+        Assert.Equal(10, result.ContextWindow.MessagesLength);
+    }
+
+    [Fact]
+    public void CopilotMessageResult_UsageEvents_AccumulateCorrectly()
+    {
+        var result = new CopilotMessageResult();
+        var usage1 = new AssistantUsageData { Model = "gpt-4", InputTokens = 500, OutputTokens = 200, Cost = 0.01 };
+        var usage2 = new AssistantUsageData { Model = "gpt-4", InputTokens = 300, OutputTokens = 150, Cost = 0.005 };
+
+        result.UsageEvents.Add(usage1);
+        result.UsageEvents.Add(usage2);
+
+        Assert.Equal(2, result.UsageEvents.Count);
+        Assert.Equal(800, result.TotalInputTokens);
+        Assert.Equal(350, result.TotalOutputTokens);
+        Assert.Equal("gpt-4", result.UsageEvents[0].Model);
     }
 
     [Fact]
