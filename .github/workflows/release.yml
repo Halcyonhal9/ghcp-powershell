@@ -4,13 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       version_bump:
-        description: "Version bump type"
+        description: "Version bump type (use 'none' to re-publish an existing release)"
         required: true
         type: choice
         options:
           - patch
           - minor
           - major
+          - none
         default: patch
       publish_to_gallery:
         description: "Publish to PowerShell Gallery"
@@ -40,13 +41,14 @@ jobs:
         with:
           dotnet-version: "9.0.x"
 
-      - name: Determine new version
+      - name: Determine version
         id: version
         shell: pwsh
         run: |
-          # Find latest release tag to compute the next version
+          # Find latest release tag (used to compute next version or identify the version to re-publish)
           $tag = git describe --tags --abbrev=0 2>$null
-          if ($LASTEXITCODE -ne 0 -or -not $tag) {
+          $hasTag = ($LASTEXITCODE -eq 0 -and $tag)
+          if (-not $hasTag) {
             $major = 0; $minor = 0; $patch = 0
           } elseif ($tag -match '^v?(\d+)\.(\d+)\.(\d+)$') {
             $major = [int]$Matches[1]; $minor = [int]$Matches[2]; $patch = [int]$Matches[3]
@@ -55,17 +57,37 @@ jobs:
             exit 1
           }
 
-          switch ('${{ inputs.version_bump }}') {
-            'major' { $newVersion = "$($major + 1).0.0" }
-            'minor' { $newVersion = "$major.$($minor + 1).0" }
-            default { $newVersion = "$major.$minor.$($patch + 1)" }
+          $bump = '${{ inputs.version_bump }}'
+          if ($bump -eq 'none') {
+            if (-not $hasTag) {
+              Write-Error "No existing release tag found — cannot re-publish"
+              exit 1
+            }
+            $version = "$major.$minor.$patch"
+            Write-Host "Re-publishing existing version: $version (tag: $tag)"
+            "version=$version" >> $env:GITHUB_OUTPUT
+            "tag=$tag"         >> $env:GITHUB_OUTPUT
+            "is_new=false"     >> $env:GITHUB_OUTPUT
+          } else {
+            switch ($bump) {
+              'major' { $newVersion = "$($major + 1).0.0" }
+              'minor' { $newVersion = "$major.$($minor + 1).0" }
+              default { $newVersion = "$major.$minor.$($patch + 1)" }
+            }
+            Write-Host "Version: $major.$minor.$patch -> $newVersion"
+            "version=$newVersion" >> $env:GITHUB_OUTPUT
+            "tag=v$newVersion"    >> $env:GITHUB_OUTPUT
+            "is_new=true"         >> $env:GITHUB_OUTPUT
           }
 
-          Write-Host "Version: $major.$minor.$patch -> $newVersion"
-          "version=$newVersion" >> $env:GITHUB_OUTPUT
-          "tag=v$newVersion"    >> $env:GITHUB_OUTPUT
+      - name: Checkout release tag
+        if: steps.version.outputs.is_new == 'false'
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: git checkout "$RELEASE_TAG"
 
       - name: Update module manifest version
+        if: steps.version.outputs.is_new == 'true'
         shell: pwsh
         run: |
           $manifest = Join-Path $env:GITHUB_WORKSPACE 'CopilotCmdlets.psd1'
@@ -146,6 +168,7 @@ jobs:
           $delimiter               >> $env:GITHUB_OUTPUT
 
       - name: Commit version bump
+        if: steps.version.outputs.is_new == 'true'
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -157,6 +180,7 @@ jobs:
           git push origin HEAD "${{ steps.version.outputs.tag }}"
 
       - name: Create GitHub Release
+        if: steps.version.outputs.is_new == 'true'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
