@@ -108,7 +108,7 @@ public sealed class SendCopilotMessageCmdlet : PSCmdlet
                 case AssistantUsageEvent usage:
                     result.UsageEvents.Add(usage.Data);
                     Console.Error.WriteLine(
-                        $"[Usage] {usage.Data.Model}: in={usage.Data.InputTokens}, out={usage.Data.OutputTokens}, cost={usage.Data.Cost}");
+                        $"[Usage] {usage.Data.Model}: in={usage.Data.InputTokens ?? 0}, out={usage.Data.OutputTokens ?? 0}, cost={usage.Data.Cost ?? 0}");
                     break;
 
                 case SessionUsageInfoEvent usageInfo:
