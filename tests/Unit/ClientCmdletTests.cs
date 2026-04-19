@@ -98,4 +98,21 @@ public class ClientCmdletTests
         Assert.Null(cmdlet.OtlpEndpoint);
         Assert.Null(cmdlet.TelemetrySourceName);
     }
+
+    [Fact]
+    public void ConnectCopilot_HasCorrectCmdletAttribute()
+    {
+        var attr = (CmdletAttribute)Attribute.GetCustomAttribute(
+            typeof(ConnectCopilotCmdlet), typeof(CmdletAttribute))!;
+        Assert.Equal(VerbsCommunications.Connect, attr.VerbName);
+        Assert.Equal("Copilot", attr.NounName);
+    }
+
+    [Fact]
+    public void ConnectCopilot_HasExpectedParameters()
+    {
+        var type = typeof(ConnectCopilotCmdlet);
+        Assert.NotNull(type.GetProperty("CliPath"));
+        Assert.NotNull(type.GetProperty("ArgumentList"));
+    }
 }

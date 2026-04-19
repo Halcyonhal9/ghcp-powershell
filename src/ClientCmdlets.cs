@@ -49,14 +49,9 @@ public sealed class NewCopilotClientCmdlet : PSCmdlet
         }
         else
         {
-            var asmDir = Path.GetDirectoryName(typeof(NewCopilotClientCmdlet).Assembly.Location);
-            if (asmDir is not null)
-            {
-                var rid = System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier;
-                var candidate = Path.Combine(asmDir, "runtimes", rid, "native", "copilot" + (OperatingSystem.IsWindows() ? ".exe" : ""));
-                if (File.Exists(candidate))
-                    options.CliPath = candidate;
-            }
+            var bundled = ModuleState.ResolveBundledCliPath();
+            if (bundled is not null)
+                options.CliPath = bundled;
         }
         if (CliUrl is not null)
         {
@@ -160,6 +155,71 @@ public sealed class TestCopilotConnectionCmdlet : PSCmdlet
         {
             ThrowTerminatingError(new ErrorRecord(
                 ex, "PingFailed", ErrorCategory.ConnectionError, target));
+        }
+    }
+}
+
+[Cmdlet(VerbsCommunications.Connect, "Copilot")]
+public sealed class ConnectCopilotCmdlet : PSCmdlet
+{
+    [Parameter]
+    public string? CliPath { get; set; }
+
+    [Parameter]
+    public string[]? ArgumentList { get; set; }
+
+    protected override void EndProcessing()
+    {
+        var cli = CliPath ?? ModuleState.ResolveBundledCliPath();
+        if (cli is null)
+        {
+            ThrowTerminatingError(new ErrorRecord(
+                new FileNotFoundException(
+                    "Could not locate the bundled Copilot CLI. Pass -CliPath to specify one explicitly."),
+                "CliNotFound", ErrorCategory.ObjectNotFound, null));
+            return;
+        }
+
+        if (ModuleState.Client is not null)
+        {
+            WriteWarning(
+                "A Copilot client is already running. Stop it with Stop-CopilotClient before logging in " +
+                "to avoid two processes contending for the same credential store.");
+        }
+
+        var psi = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = cli,
+            UseShellExecute = false,
+            RedirectStandardInput = false,
+            RedirectStandardOutput = false,
+            RedirectStandardError = false
+        };
+
+        if (ArgumentList is not null)
+        {
+            foreach (var arg in ArgumentList)
+                psi.ArgumentList.Add(arg);
+        }
+
+        WriteVerbose($"Launching Copilot CLI: {cli}");
+        Host.UI.WriteLine("Launching GitHub Copilot CLI. Type `/login` to authenticate, then `/exit` to return.");
+
+        try
+        {
+            using var proc = System.Diagnostics.Process.Start(psi)
+                ?? throw new InvalidOperationException("Failed to start Copilot CLI process.");
+            proc.WaitForExit();
+
+            if (proc.ExitCode != 0)
+            {
+                WriteWarning($"Copilot CLI exited with code {proc.ExitCode}.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ThrowTerminatingError(new ErrorRecord(
+                ex, "ConnectCopilotFailed", ErrorCategory.NotSpecified, cli));
         }
     }
 }

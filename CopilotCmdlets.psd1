@@ -11,6 +11,7 @@
         'New-CopilotClient'
         'Stop-CopilotClient'
         'Test-CopilotConnection'
+        'Connect-Copilot'
         'New-CopilotSession'
         'Resume-CopilotSession'
         'Get-CopilotSession'

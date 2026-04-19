@@ -64,6 +64,18 @@ internal static class ModuleState
         }
     }
 
+    internal static string? ResolveBundledCliPath()
+    {
+        var asmDir = Path.GetDirectoryName(typeof(ModuleState).Assembly.Location);
+        if (asmDir is null) return null;
+
+        var rid = System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier;
+        var candidate = Path.Combine(
+            asmDir, "runtimes", rid, "native",
+            "copilot" + (OperatingSystem.IsWindows() ? ".exe" : ""));
+        return File.Exists(candidate) ? candidate : null;
+    }
+
     internal static async Task CleanupAsync()
     {
         var session = CurrentSession;
