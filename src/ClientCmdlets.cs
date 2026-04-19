@@ -160,7 +160,7 @@ public sealed class TestCopilotConnectionCmdlet : PSCmdlet
     }
 }
 
-[Cmdlet(VerbsCommunications.Connect, "Copilot")]
+[Cmdlet(VerbsCommunications.Connect, "Copilot", SupportsShouldProcess = true)]
 public sealed class ConnectCopilotCmdlet : PSCmdlet
 {
     [Parameter]
@@ -168,6 +168,16 @@ public sealed class ConnectCopilotCmdlet : PSCmdlet
 
     [Parameter]
     public string[]? ArgumentList { get; set; }
+
+    [Parameter]
+    public SwitchParameter Force { get; set; }
+
+    private Process? _runningProc;
+
+    protected override void StopProcessing()
+    {
+        try { _runningProc?.Kill(entireProcessTree: true); } catch { /* ignore */ }
+    }
 
     protected override void EndProcessing()
     {
@@ -183,9 +193,13 @@ public sealed class ConnectCopilotCmdlet : PSCmdlet
 
         if (ModuleState.Client is not null)
         {
-            WriteWarning(
-                "A Copilot client is already running. Stop it with Stop-CopilotClient before logging in " +
-                "to avoid two processes contending for the same credential store.");
+            const string warning =
+                "A Copilot client is already running. Two CLI processes will contend for the same " +
+                "credential store, which can corrupt cached login state. Stop the existing client " +
+                "with Stop-CopilotClient before continuing.";
+            if (!Force.IsPresent && !ShouldContinue(warning, "Connect-Copilot"))
+                return;
+            WriteWarning(warning);
         }
 
         var psi = new ProcessStartInfo
@@ -201,13 +215,23 @@ public sealed class ConnectCopilotCmdlet : PSCmdlet
         }
 
         WriteVerbose($"Launching Copilot CLI: {cli}");
-        Host.UI.WriteLine("Launching GitHub Copilot CLI. Type `/login` to authenticate, then `/exit` to return.");
+        WriteInformation(new InformationRecord(
+            "Launching GitHub Copilot CLI. Type `/login` to authenticate, then `/exit` to return.",
+            "Connect-Copilot"), new[] { "PSHOST" });
 
         try
         {
             using var proc = Process.Start(psi)
                 ?? throw new InvalidOperationException("Failed to start Copilot CLI process.");
-            proc.WaitForExit();
+            _runningProc = proc;
+            try
+            {
+                proc.WaitForExit();
+            }
+            finally
+            {
+                _runningProc = null;
+            }
 
             if (proc.ExitCode != 0)
             {
