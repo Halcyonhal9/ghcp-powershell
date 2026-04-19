@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Management.Automation;
 using GitHub.Copilot.SDK;
 
@@ -187,13 +188,10 @@ public sealed class ConnectCopilotCmdlet : PSCmdlet
                 "to avoid two processes contending for the same credential store.");
         }
 
-        var psi = new System.Diagnostics.ProcessStartInfo
+        var psi = new ProcessStartInfo
         {
             FileName = cli,
-            UseShellExecute = false,
-            RedirectStandardInput = false,
-            RedirectStandardOutput = false,
-            RedirectStandardError = false
+            UseShellExecute = false
         };
 
         if (ArgumentList is not null)
@@ -207,7 +205,7 @@ public sealed class ConnectCopilotCmdlet : PSCmdlet
 
         try
         {
-            using var proc = System.Diagnostics.Process.Start(psi)
+            using var proc = Process.Start(psi)
                 ?? throw new InvalidOperationException("Failed to start Copilot CLI process.");
             proc.WaitForExit();
 

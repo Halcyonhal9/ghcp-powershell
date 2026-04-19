@@ -1,4 +1,5 @@
 using System.Management.Automation;
+using System.Runtime.InteropServices;
 using GitHub.Copilot.SDK;
 
 namespace CopilotCmdlets;
@@ -69,7 +70,7 @@ internal static class ModuleState
         var asmDir = Path.GetDirectoryName(typeof(ModuleState).Assembly.Location);
         if (asmDir is null) return null;
 
-        var rid = System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier;
+        var rid = RuntimeInformation.RuntimeIdentifier;
         var candidate = Path.Combine(
             asmDir, "runtimes", rid, "native",
             "copilot" + (OperatingSystem.IsWindows() ? ".exe" : ""));
