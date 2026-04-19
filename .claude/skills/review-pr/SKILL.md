@@ -76,6 +76,6 @@ Each inline comment should:
 
 - Be constructive, not pedantic. Focus on issues that matter.
 - Don't flag things that are clearly intentional design choices without strong reason.
-- Respect the codebase conventions defined in CLAUDE.md (camelCase locals, PascalCase publics, xUnit + NSubstitute, .NET 9).
+- Respect the codebase conventions defined in CLAUDE.md (camelCase locals, PascalCase publics, xUnit + NSubstitute, .NET 10).
 - If the PR has tests, verify they actually test the new behavior — not just that tests exist.
 - Limit inline comments to the most impactful findings (aim for 3-8 comments, not 20).

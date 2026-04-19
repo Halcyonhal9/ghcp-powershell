@@ -45,4 +45,4 @@ pwsh build.ps1
 
 - Open the workspace: `CopilotCmdlets.code-workspace`
 - Debug configurations are in `.vscode/launch.json` (attach to pwsh, run tests)
-- Target: .NET 9 / PowerShell 7.6+
+- Target: .NET 10 / PowerShell 7.6+

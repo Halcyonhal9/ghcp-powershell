@@ -4,7 +4,7 @@
 
 - Expose the full surface of the .NET `GitHub.Copilot.SDK` library as PowerShell cmdlets.
 - Write as little code as possible: thin pass-through to SDK, zero custom business logic.
-- Run on Windows, macOS, and Ubuntu via PowerShell 7.6+ (.NET 9).
+- Run on Windows, macOS, and Ubuntu via PowerShell 7.6+ (.NET 10).
 - Default to streaming output and interactive permission prompts.
 - Design for a future `-NoWait` async pattern without requiring a rewrite.
 
@@ -12,8 +12,8 @@
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
-| Module type | **C# binary cmdlet** (.dll) | Type-safe, direct SDK references, no reflection hacks. Fully cross-platform on .NET 9 — no platform-specific code needed. |
-| Target framework | `net9.0` | PowerShell 7.5/7.6 runs on .NET 9. |
+| Module type | **C# binary cmdlet** (.dll) | Type-safe, direct SDK references, no reflection hacks. Fully cross-platform on .NET 10 — no platform-specific code needed. |
+| Target framework | `net10.0` | PowerShell 7.6 runs on .NET 10. |
 | SDK reference | `GitHub.Copilot.SDK` NuGet 0.1.x | The official .NET SDK. |
 | PS SDK reference | `System.Management.Automation` 7.5.x | `PrivateAssets="all"` — not shipped with the module. |
 | Naming convention | `Verb-CopilotNoun` | Standard PowerShell verb-noun, `Copilot` prefix on all nouns. |
