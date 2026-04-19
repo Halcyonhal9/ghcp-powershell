@@ -1,4 +1,5 @@
 using System.Management.Automation;
+using System.Runtime.InteropServices;
 using GitHub.Copilot.SDK;
 
 namespace CopilotCmdlets;
@@ -62,6 +63,18 @@ internal static class ModuleState
             error = new ErrorRecord(ex, "NoSession", ErrorCategory.InvalidOperation, null);
             return false;
         }
+    }
+
+    internal static string? ResolveBundledCliPath()
+    {
+        var asmDir = Path.GetDirectoryName(typeof(ModuleState).Assembly.Location);
+        if (asmDir is null) return null;
+
+        var rid = RuntimeInformation.RuntimeIdentifier;
+        var candidate = Path.Combine(
+            asmDir, "runtimes", rid, "native",
+            "copilot" + (OperatingSystem.IsWindows() ? ".exe" : ""));
+        return File.Exists(candidate) ? candidate : null;
     }
 
     internal static async Task CleanupAsync()
