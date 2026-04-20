@@ -65,6 +65,12 @@ internal static class ModuleState
         }
     }
 
+    // RIDs the build.ps1 release pipeline ships per-platform zips for. Keep in sync
+    // with the $runtimes list in build.ps1.
+    private static readonly string[] SupportedRids = { "win-x64", "osx-arm64" };
+
+    private const string ReleasesUrl = "https://github.com/Halcyonhal9/ghcp-powershell/releases/latest";
+
     internal static string? ResolveBundledCliPath()
     {
         var asmDir = Path.GetDirectoryName(typeof(ModuleState).Assembly.Location);
@@ -75,6 +81,32 @@ internal static class ModuleState
             asmDir, "runtimes", rid, "native",
             "copilot" + (OperatingSystem.IsWindows() ? ".exe" : ""));
         return File.Exists(candidate) ? candidate : null;
+    }
+
+    /// <summary>
+    /// Builds a human-readable error message for callers that need the bundled CLI but
+    /// could not find it. Distinguishes between a missing-from-payload case (supported RID
+    /// but the file isn't on disk — usually means the gallery package was built incorrectly)
+    /// and an unsupported-platform case (RID not shipped at all — point users at the
+    /// per-platform release zips).
+    /// </summary>
+    internal static string BuildMissingCliMessage()
+    {
+        var rid = RuntimeInformation.RuntimeIdentifier;
+        var isSupported = Array.Exists(SupportedRids, r => string.Equals(r, rid, StringComparison.OrdinalIgnoreCase));
+
+        if (isSupported)
+        {
+            return $"Could not locate the bundled Copilot CLI for runtime '{rid}'. " +
+                   $"The module appears to be installed without its native payload. " +
+                   $"Reinstall from {ReleasesUrl} (download the {rid} zip), or pass -CliPath to specify one explicitly.";
+        }
+
+        var supported = string.Join(", ", SupportedRids);
+        return $"The bundled Copilot CLI is not shipped for runtime '{rid}'. " +
+               $"Supported runtimes: {supported}. " +
+               $"Install the GitHub Copilot CLI separately and pass its path with -CliPath, " +
+               $"or download a per-platform release that matches your system from {ReleasesUrl}.";
     }
 
     internal static async Task CleanupAsync()

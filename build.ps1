@@ -22,7 +22,12 @@ $ErrorActionPreference = 'Stop'
 $repoRoot   = $PSScriptRoot
 $manifest   = Join-Path $repoRoot 'CopilotCmdlets.psd1'
 $outDir       = Join-Path $repoRoot 'out'
-$runtimes     = @('win-x64', 'linux-x64', 'linux-arm64', 'osx-arm64')
+# Supported runtimes for binary distribution. Keep this list small: every RID is
+# a separate per-platform release zip and adds another copy of the native
+# Copilot CLI (~50 MB) to the PowerShell Gallery payload. Other platforms can
+# still install the module but Connect-Copilot will tell them to grab the
+# matching release zip from GitHub.
+$runtimes     = @('win-x64', 'osx-arm64')
 $galleryDir   = Join-Path $outDir 'gallery'
 $galleryStage = Join-Path $galleryDir 'CopilotCmdlets'
 
@@ -108,6 +113,20 @@ function New-ModuleStage {
     New-Item -ItemType Directory -Force -Path $galleryStage | Out-Null
     Get-ChildItem -Path $galleryDir -Force | Where-Object { $_.FullName -ne $galleryStage } |
         Copy-Item -Destination $galleryStage -Recurse -Force
+
+    # The RID-neutral gallery publish only emits the host RID's runtimes/<rid>/native
+    # payload, so an Install-PSResource on a different platform would be missing the
+    # bundled Copilot CLI. Merge each supported per-RID runtimes/ folder into the
+    # gallery stage so a single install works on every supported platform.
+    $galleryRuntimes = Join-Path $galleryStage 'runtimes'
+    New-Item -ItemType Directory -Force -Path $galleryRuntimes | Out-Null
+    foreach ($rid in $runtimes) {
+        $ridRuntimes = Join-Path (Get-RuntimeOutDir $rid) 'runtimes'
+        if (Test-Path $ridRuntimes) {
+            Copy-Item (Join-Path $ridRuntimes '*') -Destination $galleryRuntimes -Recurse -Force
+        }
+    }
+
     Copy-Item $manifest -Destination $galleryStage -Force
 }
 

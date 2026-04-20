@@ -185,8 +185,7 @@ public sealed class ConnectCopilotCmdlet : PSCmdlet
         if (cli is null)
         {
             ThrowTerminatingError(new ErrorRecord(
-                new FileNotFoundException(
-                    "Could not locate the bundled Copilot CLI. Pass -CliPath to specify one explicitly."),
+                new FileNotFoundException(ModuleState.BuildMissingCliMessage()),
                 "CliNotFound", ErrorCategory.ObjectNotFound, null));
             return;
         }

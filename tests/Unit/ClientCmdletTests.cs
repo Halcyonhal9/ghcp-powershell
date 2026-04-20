@@ -181,4 +181,15 @@ public class ClientCmdletTests
             Assert.True(File.Exists(result), $"ResolveBundledCliPath returned a path that doesn't exist: {result}");
         }
     }
+
+    [Fact]
+    public void BuildMissingCliMessage_IncludesReleasesUrl()
+    {
+        var method = typeof(ModuleState).GetMethod(
+            "BuildMissingCliMessage",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!;
+        var msg = (string)method.Invoke(null, null)!;
+        Assert.Contains("github.com/Halcyonhal9/ghcp-powershell/releases/latest", msg);
+        Assert.Contains("-CliPath", msg);
+    }
 }
