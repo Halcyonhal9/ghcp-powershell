@@ -90,9 +90,11 @@ internal static class ModuleState
     /// and an unsupported-platform case (RID not shipped at all — point users at the
     /// per-platform release zips).
     /// </summary>
-    internal static string BuildMissingCliMessage()
+    internal static string BuildMissingCliMessage() =>
+        BuildMissingCliMessage(RuntimeInformation.RuntimeIdentifier);
+
+    internal static string BuildMissingCliMessage(string rid)
     {
-        var rid = RuntimeInformation.RuntimeIdentifier;
         var isSupported = SupportedRids.Contains(rid, StringComparer.OrdinalIgnoreCase);
 
         if (isSupported)
