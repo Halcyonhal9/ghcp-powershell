@@ -80,7 +80,27 @@ internal static class ModuleState
         var candidate = Path.Combine(
             asmDir, "runtimes", rid, "native",
             "copilot" + (OperatingSystem.IsWindows() ? ".exe" : ""));
-        return File.Exists(candidate) ? candidate : null;
+        if (!File.Exists(candidate)) return null;
+
+        // Gallery/zip packaging can strip the execute bit on non-Windows.
+        // Set it if missing so the CLI can actually be launched.
+        // Best-effort: if the user doesn't own the file (system-wide install),
+        // the chmod will fail — but the binary may already be executable, so
+        // return the path anyway and let Process.Start surface the real error.
+        if (!OperatingSystem.IsWindows())
+        {
+            try
+            {
+                var mode = File.GetUnixFileMode(candidate);
+                if ((mode & UnixFileMode.UserExecute) == 0)
+                {
+                    File.SetUnixFileMode(candidate, mode | UnixFileMode.UserExecute);
+                }
+            }
+            catch (UnauthorizedAccessException) { /* best-effort */ }
+        }
+
+        return candidate;
     }
 
     /// <summary>
