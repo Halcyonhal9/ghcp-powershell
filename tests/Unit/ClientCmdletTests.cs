@@ -181,4 +181,44 @@ public class ClientCmdletTests
             Assert.True(File.Exists(result), $"ResolveBundledCliPath returned a path that doesn't exist: {result}");
         }
     }
+
+    [Fact]
+    public void BuildMissingCliMessage_IncludesReleasesUrl()
+    {
+        var method = typeof(ModuleState).GetMethod(
+            "BuildMissingCliMessage",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic,
+            null, Type.EmptyTypes, null)!;
+        var msg = (string)method.Invoke(null, null)!;
+        Assert.Contains("github.com/Halcyonhal9/ghcp-powershell/releases/latest", msg);
+        Assert.Contains("-CliPath", msg);
+    }
+
+    [Fact]
+    public void BuildMissingCliMessage_UnsupportedRid_ListsSupportedRids()
+    {
+        var method = typeof(ModuleState).GetMethod(
+            "BuildMissingCliMessage",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic,
+            null, new[] { typeof(string) }, null)!;
+        var msg = (string)method.Invoke(null, new object[] { "linux-s390x" })!;
+        Assert.Contains("linux-s390x", msg);
+        Assert.Contains("win-x64", msg);
+        Assert.Contains("osx-arm64", msg);
+        Assert.Contains("-CliPath", msg);
+        Assert.Contains("releases/latest", msg);
+    }
+
+    [Fact]
+    public void BuildMissingCliMessage_SupportedRid_SuggestsReinstall()
+    {
+        var method = typeof(ModuleState).GetMethod(
+            "BuildMissingCliMessage",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic,
+            null, new[] { typeof(string) }, null)!;
+        var msg = (string)method.Invoke(null, new object[] { "win-x64" })!;
+        Assert.Contains("win-x64", msg);
+        Assert.Contains("Reinstall", msg);
+        Assert.Contains("releases/latest", msg);
+    }
 }
