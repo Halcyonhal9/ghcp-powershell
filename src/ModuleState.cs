@@ -65,8 +65,8 @@ internal static class ModuleState
         }
     }
 
-    // RIDs the build.ps1 release pipeline ships per-platform zips for. Keep in sync
-    // with the $runtimes list in build.ps1.
+    // RIDs shipped in the release pipeline. Keep in sync with the $runtimes list
+    // in build.ps1 and .github/workflows/release.yml.
     private static readonly string[] SupportedRids = { "win-x64", "osx-arm64" };
 
     private const string ReleasesUrl = "https://github.com/Halcyonhal9/ghcp-powershell/releases/latest";

@@ -104,7 +104,7 @@ jobs:
         run: |
           $project  = Join-Path $env:GITHUB_WORKSPACE 'src/CopilotCmdlets.csproj'
           $outDir   = Join-Path $env:GITHUB_WORKSPACE 'out'
-          $runtimes = @('win-x64', 'linux-x64', 'linux-arm64', 'osx-arm64')
+          $runtimes = @('win-x64', 'osx-arm64')
 
           foreach ($rid in $runtimes) {
             $ridOut = Join-Path $outDir $rid
@@ -126,7 +126,7 @@ jobs:
           $root       = $env:GITHUB_WORKSPACE
           $outDir     = Join-Path $root 'out'
           $manifest   = Join-Path $root 'CopilotCmdlets.psd1'
-          $runtimes   = @('win-x64', 'linux-x64', 'linux-arm64', 'osx-arm64')
+          $runtimes   = @('win-x64', 'osx-arm64')
           $version    = '${{ steps.version.outputs.version }}'
           $galleryDir = Join-Path $outDir 'gallery'
 
@@ -157,6 +157,18 @@ jobs:
           Get-ChildItem -Path $galleryDir -Force |
             Where-Object { $_.FullName -ne $galleryStage } |
             Copy-Item -Destination $galleryStage -Recurse -Force
+
+          # Merge per-RID native payloads into gallery stage so Install-PSResource
+          # ships the Copilot CLI for every supported platform in a single package.
+          $galleryRuntimes = Join-Path $galleryStage 'runtimes'
+          New-Item -ItemType Directory -Force -Path $galleryRuntimes | Out-Null
+          foreach ($rid in $runtimes) {
+            $ridRuntimes = Join-Path $outDir $rid 'runtimes'
+            if (Test-Path $ridRuntimes) {
+              Copy-Item (Join-Path $ridRuntimes '*') -Destination $galleryRuntimes -Recurse -Force
+            }
+          }
+
           Copy-Item $manifest -Destination $galleryStage -Force
 
           # Output zip paths (newline-separated) for the release step
