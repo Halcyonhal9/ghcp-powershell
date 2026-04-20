@@ -93,7 +93,7 @@ internal static class ModuleState
     internal static string BuildMissingCliMessage()
     {
         var rid = RuntimeInformation.RuntimeIdentifier;
-        var isSupported = Array.Exists(SupportedRids, r => string.Equals(r, rid, StringComparison.OrdinalIgnoreCase));
+        var isSupported = SupportedRids.Contains(rid, StringComparer.OrdinalIgnoreCase);
 
         if (isSupported)
         {
