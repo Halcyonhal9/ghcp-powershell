@@ -30,6 +30,10 @@ jobs:
   release:
     runs-on: ubuntu-latest
     environment: CopilotCmdletsEnv
+    env:
+      # Supported runtimes — used by both the build and staging steps.
+      # Keep in sync with SupportedRids in src/ModuleState.cs and $runtimes in build.ps1.
+      RUNTIMES: 'win-x64 osx-arm64'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -104,7 +108,7 @@ jobs:
         run: |
           $project  = Join-Path $env:GITHUB_WORKSPACE 'src/CopilotCmdlets.csproj'
           $outDir   = Join-Path $env:GITHUB_WORKSPACE 'out'
-          $runtimes = @('win-x64', 'osx-arm64')
+          $runtimes = $env:RUNTIMES -split ' '
 
           foreach ($rid in $runtimes) {
             $ridOut = Join-Path $outDir $rid
@@ -126,7 +130,7 @@ jobs:
           $root       = $env:GITHUB_WORKSPACE
           $outDir     = Join-Path $root 'out'
           $manifest   = Join-Path $root 'CopilotCmdlets.psd1'
-          $runtimes   = @('win-x64', 'osx-arm64')
+          $runtimes   = $env:RUNTIMES -split ' '
           $version    = '${{ steps.version.outputs.version }}'
           $galleryDir = Join-Path $outDir 'gallery'
 
@@ -165,7 +169,8 @@ jobs:
           foreach ($rid in $runtimes) {
             $ridRuntimes = Join-Path $outDir $rid 'runtimes'
             if (Test-Path $ridRuntimes) {
-              Copy-Item (Join-Path $ridRuntimes '*') -Destination $galleryRuntimes -Recurse -Force
+              Get-ChildItem -Path $ridRuntimes -Force |
+                Copy-Item -Destination $galleryRuntimes -Recurse -Force
             }
           }
 
