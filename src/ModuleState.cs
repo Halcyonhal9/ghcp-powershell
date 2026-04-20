@@ -84,13 +84,20 @@ internal static class ModuleState
 
         // Gallery/zip packaging can strip the execute bit on non-Windows.
         // Set it if missing so the CLI can actually be launched.
+        // Best-effort: if the user doesn't own the file (system-wide install),
+        // the chmod will fail — but the binary may already be executable, so
+        // return the path anyway and let Process.Start surface the real error.
         if (!OperatingSystem.IsWindows())
         {
-            var mode = File.GetUnixFileMode(candidate);
-            if ((mode & UnixFileMode.UserExecute) == 0)
+            try
             {
-                File.SetUnixFileMode(candidate, mode | UnixFileMode.UserExecute);
+                var mode = File.GetUnixFileMode(candidate);
+                if ((mode & UnixFileMode.UserExecute) == 0)
+                {
+                    File.SetUnixFileMode(candidate, mode | UnixFileMode.UserExecute);
+                }
             }
+            catch (UnauthorizedAccessException) { /* best-effort */ }
         }
 
         return candidate;

@@ -179,7 +179,8 @@ jobs:
           # Ensure native CLI binaries have execute permission.
           # NuGet/zip packaging strips the Unix execute bit; without this,
           # Connect-Copilot fails with 'Permission denied' on macOS/Linux.
-          foreach ($rid in $runtimes) {
+          # Skip Windows RIDs — .exe files don't need a Unix execute bit.
+          foreach ($rid in ($runtimes | Where-Object { -not $_.StartsWith('win-') })) {
             $nativeDir = Join-Path $galleryRuntimes $rid 'native'
             if (Test-Path $nativeDir) {
               Get-ChildItem -Path $nativeDir -File | ForEach-Object {
