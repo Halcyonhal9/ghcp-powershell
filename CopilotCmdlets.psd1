@@ -1,6 +1,6 @@
 @{
     RootModule           = 'CopilotCmdlets.dll'
-    ModuleVersion     = '0.4.10'
+    ModuleVersion     = '0.4.11'
     GUID                 = 'a7f3d8e1-4b2c-4f9a-8e6d-1c3b5a7f9e2d'
     Author               = 'Ben Appleby'
     Description          = 'PowerShell Cmdlets for the GitHub Copilot SDK'
