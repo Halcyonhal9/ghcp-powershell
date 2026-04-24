@@ -102,7 +102,7 @@ public class SessionCmdletTests
 
         var result = await handler.Invoke(request, invocation);
 
-        Assert.Equal("approve-once", result.Kind.ToString());
+        Assert.Equal(PermissionRequestResultKind.Approved, result.Kind);
     }
 
     [Fact]
@@ -119,7 +119,7 @@ public class SessionCmdletTests
             Console.SetIn(new StringReader("y"));
             Console.SetError(TextWriter.Null);
             var result = await handler.Invoke(request, invocation);
-            Assert.Equal("approve-once", result.Kind.ToString());
+            Assert.Equal(PermissionRequestResultKind.Approved, result.Kind);
         }
         finally
         {
@@ -142,7 +142,7 @@ public class SessionCmdletTests
             Console.SetIn(new StringReader("n"));
             Console.SetError(TextWriter.Null);
             var result = await handler.Invoke(request, invocation);
-            Assert.Equal("reject", result.Kind.ToString());
+            Assert.Equal(PermissionRequestResultKind.Rejected, result.Kind);
         }
         finally
         {
