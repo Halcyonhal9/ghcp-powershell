@@ -143,12 +143,12 @@ public sealed class SendCopilotMessageAsyncCmdlet : PSCmdlet
 
         var options = new MessageOptions { Prompt = Prompt };
 
-        var attachments = new List<UserMessageDataAttachmentsItem>();
+        var attachments = new List<UserMessageAttachment>();
 
         if (Attachment is { Length: > 0 })
         {
             attachments.AddRange(Attachment.Select(path =>
-                (UserMessageDataAttachmentsItem)new UserMessageDataAttachmentsItemFile
+                (UserMessageAttachment)new UserMessageAttachmentFile
                 {
                     Path = path,
                     DisplayName = System.IO.Path.GetFileName(path),
@@ -158,7 +158,7 @@ public sealed class SendCopilotMessageAsyncCmdlet : PSCmdlet
 
         if (BlobData is not null)
         {
-            attachments.Add(new UserMessageDataAttachmentsItemBlob
+            attachments.Add(new UserMessageAttachmentBlob
             {
                 Data = BlobData,
                 MimeType = BlobMimeType ?? "application/octet-stream"
