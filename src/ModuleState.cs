@@ -167,7 +167,7 @@ internal static class PermissionHandlers
         {
             Kind = approved
                 ? PermissionRequestResultKind.Approved
-                : PermissionRequestResultKind.DeniedInteractivelyByUser
+                : PermissionRequestResultKind.Rejected
         });
     };
 
