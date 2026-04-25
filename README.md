@@ -1,109 +1,160 @@
 # CopilotCmdlets
 
-PowerShell wrapper for the [GitHub Copilot SDK](https://www.nuget.org/packages/GitHub.Copilot.SDK). Thin binary cmdlets that delegate directly to the .NET SDK — no custom business logic.
+PowerShell cmdlets for the [GitHub Copilot SDK](https://www.nuget.org/packages/GitHub.Copilot.SDK). The module is a thin binary wrapper around the SDK and delegates directly to SDK methods.
 
 ## Requirements
 
 - PowerShell 7.6+ (Core edition)
 - .NET 10
 - A GitHub account with Copilot access
+- Windows x64 or macOS arm64 for the bundled Copilot CLI included in the gallery package
 
 ## Installation
 
-Download the latest zip from [Releases](https://github.com/Halcyonhal9/ghcp-powershell/releases), extract it, and import the module:
+CopilotCmdlets is published to the PowerShell Gallery.
+
+### Windows
+
+Install PowerShell 7.6+, then run PowerShell (`pwsh`) and install the module:
 
 ```powershell
-Import-Module ./CopilotCmdlets.psd1
+Install-PSResource CopilotCmdlets
 ```
 
-### Build from Source
+### macOS
+
+Install PowerShell 7.6+ for macOS, then run `pwsh` and install the module:
+
+```powershell
+Install-PSResource CopilotCmdlets
+```
+
+If you do not already have a trusted PowerShell Gallery repository configured, PowerShell may prompt you to trust the repository during installation.
+
+After installation, restart `pwsh` to load the module automatically, or run `Import-Module CopilotCmdlets` to use it immediately in the current session.
+
+### Other platforms or custom CLI builds
+
+The published module includes native Copilot CLI payloads for Windows x64 and macOS arm64. On another runtime, or if you want to use a custom CLI binary, pass `-CliPath` to `Connect-Copilot` and `New-CopilotClient`.
+
+### Build from source
 
 ```bash
 dotnet publish src/CopilotCmdlets.csproj -c Release -o out
+pwsh -NoLogo -Command "Import-Module ./out/CopilotCmdlets.psd1"
 ```
 
-Or use the convenience script:
+Or use the convenience script, which builds the supported runtime packages:
 
 ```bash
 pwsh build.ps1
 ```
 
+## First-time authentication
+
+Use `Connect-Copilot` to launch the bundled GitHub Copilot CLI interactively. At the CLI prompt, run `/login` to authenticate, then `/exit` to return to PowerShell.
+
+```powershell
+Connect-Copilot
+```
+
+`Connect-Copilot` accepts `-CliPath` when you need to launch a specific Copilot CLI binary and `-ArgumentList` to pass arguments through to that CLI. If a SDK client is already running, stop it first with `Stop-CopilotClient`, or use `-Force` to continue after the warning.
+
 ## Quickstart
 
 ```powershell
-Import-Module ./out/CopilotCmdlets.psd1
+# Authenticate first if needed.
+Connect-Copilot
 
-# Connect to the Copilot CLI
-New-CopilotClient
-
-# Verify connectivity
+# Start the SDK client and verify connectivity.
+$client = New-CopilotClient
 Test-CopilotConnection
 
-# Start a session
-New-CopilotSession -SessionId "my-session" -AutoApprove
+# Start a session.
+$session = New-CopilotSession -SessionId "my-session" -AutoApprove
 
-# Send a message (streams to terminal, returns structured result)
+# Send a message. Output streams to the terminal and the structured result is returned.
 $result = Send-CopilotMessage "Explain what this repository does"
-$result.Content   # full response text
+$result.Content
+$result.TotalInputTokens
+$result.TotalOutputTokens
 
-# View conversation history
+# View conversation events.
 Get-CopilotMessage
 
-# Close session (preserves state for later resume)
+# Close the session without deleting it.
 Close-CopilotSession
 
-# Resume a previous session
+# Resume a previous session.
 Resume-CopilotSession -SessionId "my-session"
 
-# List all sessions
+# List, inspect, and delete sessions.
 Get-CopilotSession | Format-Table SessionId, Summary, ModifiedTime
-
-# Delete a session permanently
+Get-CopilotSession -SessionId "my-session"
 Remove-CopilotSession -SessionId "my-session"
 
-# Shut down the client
+# Shut down the client.
 Stop-CopilotClient
 ```
 
 ## Cmdlets
 
-### Client Lifecycle
+### Client and authentication
 
-| Cmdlet | Description |
-|--------|-------------|
-| `New-CopilotClient` | Creates and starts a Copilot client |
-| `Stop-CopilotClient` | Stops and disposes the client |
-| `Test-CopilotConnection` | Pings the CLI server |
+| Cmdlet | Purpose | Common parameters |
+| --- | --- | --- |
+| `Connect-Copilot` | Launches the Copilot CLI for interactive commands such as `/login`. | `-CliPath`, `-ArgumentList`, `-Force` |
+| `New-CopilotClient` | Starts a Copilot SDK client and stores it as the module default. | `-GitHubToken`, `-CliPath`, `-CliUrl`, `-LogLevel`, `-OtlpEndpoint`, `-TelemetrySourceName` |
+| `Test-CopilotConnection` | Pings the Copilot CLI server through the current or supplied client. | `-Client`, `-Message` |
+| `Stop-CopilotClient` | Stops and disposes the current or supplied client. | `-Client`, `-Force`, `-WhatIf`, `-Confirm` |
 
-### Session Lifecycle
+### Sessions
 
-| Cmdlet | Description |
-|--------|-------------|
-| `New-CopilotSession` | Creates a new session |
-| `Resume-CopilotSession` | Resumes a closed session by ID |
-| `Get-CopilotSession` | Lists all known sessions |
-| `Remove-CopilotSession` | Permanently deletes a session |
-| `Close-CopilotSession` | Closes without deleting (resumable) |
+| Cmdlet | Purpose | Common parameters |
+| --- | --- | --- |
+| `New-CopilotSession` | Creates a new Copilot session and stores it as the module default. | `-Client`, `-SessionId`, `-Model`, `-SystemMessage`, `-SystemMessageMode`, `-SystemMessageSections`, `-ReasoningEffort`, `-AutoApprove`, `-InfiniteSessions`, `-WorkingDirectory`, `-AvailableTools`, `-ExcludedTools`, `-EnableConfigDiscovery`, `-Agent`, `-SkillDirectories` |
+| `Resume-CopilotSession` | Resumes an existing session by ID and stores it as the module default. | `-SessionId`, `-Client`, `-Model`, `-AutoApprove`, `-SystemMessage`, `-SystemMessageMode`, `-SystemMessageSections`, `-ReasoningEffort`, `-WorkingDirectory`, `-EnableConfigDiscovery`, `-Agent`, `-SkillDirectories` |
+| `Get-CopilotSession` | Lists sessions or returns metadata for one session. | `-SessionId`, `-Client` |
+| `Close-CopilotSession` | Closes a session without deleting its saved state. | `-Session` |
+| `Remove-CopilotSession` | Permanently deletes a saved session. | `-SessionId`, `-Client`, `-WhatIf`, `-Confirm` |
 
 ### Messaging
 
-| Cmdlet | Description |
-|--------|-------------|
-| `Send-CopilotMessage` | Sends a prompt, streams output, returns result |
-| `Get-CopilotMessage` | Retrieves conversation history |
+| Cmdlet | Purpose | Common parameters |
+| --- | --- | --- |
+| `Send-CopilotMessage` | Sends a prompt, streams assistant output, and returns a `CopilotMessageResult`. | `-Prompt`, `-Session`, `-Attachment`, `-BlobData`, `-BlobMimeType`, `-Timeout` |
+| `Get-CopilotMessage` | Retrieves conversation events from the current or supplied session. | `-Session` |
+| `Send-CopilotMessageAsync` | Sends a prompt and immediately returns a `CopilotAsyncResult` handle. | `-Prompt`, `-Session`, `-Tag`, `-Attachment`, `-BlobData`, `-BlobMimeType` |
+| `Receive-CopilotAsyncResult` | Waits for an async message handle and returns a `CopilotMessageResult`. | `-Result`, `-Timeout`, `-DisposeSession` |
+
+Synchronous and async message sends support file attachments through `-Attachment`. Inline binary attachments can be supplied with base64 `-BlobData` and an optional `-BlobMimeType`.
+
+```powershell
+$result = Send-CopilotMessage -Prompt "Summarize this file" -Attachment ./README.md
+
+$job = Send-CopilotMessageAsync -Prompt "Generate a short checklist" -Tag checklist
+$job | Receive-CopilotAsyncResult -Timeout (New-TimeSpan -Minutes 10)
+```
 
 ### Models
 
-| Cmdlet             | Description                     |
-|--------------------|---------------------------------|
-| `Get-CopilotModel` | Lists available Copilot models |
+| Cmdlet | Purpose | Common parameters |
+| --- | --- | --- |
+| `Get-CopilotModel` | Lists available Copilot models for the current or supplied client. | `-Client` |
+| `Set-CopilotModel` | Changes the model for the current or supplied session. | `-Model`, `-Session`, `-ReasoningEffort`, `-Vision` |
 
-## Key Parameters
+```powershell
+Get-CopilotModel | Format-Table Id, Name
+Set-CopilotModel -Model "<model-id>" -ReasoningEffort low
+```
 
-- **`-AutoApprove`** on `New-CopilotSession` / `Resume-CopilotSession`: Auto-approve all tool permission requests (skip interactive prompts).
-- **`-Client`** / **`-Session`**: Override the module-scoped default on any cmdlet.
-- **`-Force`** on `Stop-CopilotClient`: Force-stop instead of graceful shutdown.
-- **`-WhatIf`** / **`-Confirm`** on `Remove-CopilotSession` and `Stop-CopilotClient`.
+## Default client and session behavior
+
+`New-CopilotClient` stores the created client in module state. Cmdlets that accept `-Client` use that default when `-Client` is omitted.
+
+`New-CopilotSession` and `Resume-CopilotSession` store the current session in module state. Cmdlets that accept `-Session` use that default when `-Session` is omitted.
+
+Use explicit `-Client` and `-Session` parameters when you want to manage multiple clients or sessions in the same PowerShell process.
 
 ## Testing
 
