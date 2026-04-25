@@ -193,6 +193,7 @@ public class ModuleStateTests : IDisposable
         var ex = Assert.Throws<PSInvalidOperationException>(
             () => ModuleState.ResolveSessionArgument("session-123"));
         Assert.Contains("New-CopilotClient", ex.Message);
+        Assert.Null(ModuleState.CurrentSession);
     }
 
     [Theory]

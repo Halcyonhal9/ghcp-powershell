@@ -88,7 +88,6 @@ internal static class ModuleState
 
         var resumedSession = client.ResumeSessionAsync(trimmedSessionId, config, CancellationToken.None)
             .GetAwaiter().GetResult();
-        CurrentSession = resumedSession;
         return resumedSession;
     }
 
