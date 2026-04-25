@@ -19,7 +19,6 @@ Install PowerShell 7.6+, then run PowerShell (`pwsh`) and install the module:
 
 ```powershell
 Install-PSResource CopilotCmdlets
-Import-Module CopilotCmdlets
 ```
 
 ### macOS
@@ -28,10 +27,11 @@ Install PowerShell 7.6+ for macOS, then run `pwsh` and install the module:
 
 ```powershell
 Install-PSResource CopilotCmdlets
-Import-Module CopilotCmdlets
 ```
 
 If you do not already have a trusted PowerShell Gallery repository configured, PowerShell may prompt you to trust the repository during installation.
+
+After installation, restart `pwsh` to load the module automatically, or run `Import-Module CopilotCmdlets` to use it immediately in the current session.
 
 ### Other platforms or custom CLI builds
 
@@ -55,7 +55,6 @@ pwsh build.ps1
 Use `Connect-Copilot` to launch the bundled GitHub Copilot CLI interactively. At the CLI prompt, run `/login` to authenticate, then `/exit` to return to PowerShell.
 
 ```powershell
-Import-Module CopilotCmdlets
 Connect-Copilot
 ```
 
@@ -64,8 +63,6 @@ Connect-Copilot
 ## Quickstart
 
 ```powershell
-Import-Module CopilotCmdlets
-
 # Authenticate first if needed.
 Connect-Copilot
 
