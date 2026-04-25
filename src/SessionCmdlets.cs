@@ -271,6 +271,8 @@ public sealed class RemoveCopilotSessionCmdlet : PSCmdlet
 public sealed class CloseCopilotSessionCmdlet : PSCmdlet
 {
     [Parameter]
+    [CopilotSessionTransformation]
+    [ArgumentCompleter(typeof(CopilotSessionCompleter))]
     public CopilotSession? Session { get; set; }
 
     protected override void EndProcessing()

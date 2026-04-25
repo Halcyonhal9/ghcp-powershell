@@ -116,6 +116,8 @@ public sealed class SendCopilotMessageAsyncCmdlet : PSCmdlet
     public string Prompt { get; set; } = null!;
 
     [Parameter]
+    [CopilotSessionTransformation]
+    [ArgumentCompleter(typeof(CopilotSessionCompleter))]
     public CopilotSession? Session { get; set; }
 
     [Parameter]

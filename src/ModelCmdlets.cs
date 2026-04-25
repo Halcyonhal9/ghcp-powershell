@@ -41,6 +41,8 @@ public sealed class SetCopilotModelCmdlet : PSCmdlet
     public string Model { get; set; } = null!;
 
     [Parameter]
+    [CopilotSessionTransformation]
+    [ArgumentCompleter(typeof(CopilotSessionCompleter))]
     public CopilotSession? Session { get; set; }
 
     [Parameter]

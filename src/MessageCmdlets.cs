@@ -44,6 +44,8 @@ public sealed class SendCopilotMessageCmdlet : PSCmdlet
     public string Prompt { get; set; } = null!;
 
     [Parameter]
+    [CopilotSessionTransformation]
+    [ArgumentCompleter(typeof(CopilotSessionCompleter))]
     public CopilotSession? Session { get; set; }
 
     [Parameter]
@@ -196,6 +198,8 @@ public sealed class SendCopilotMessageCmdlet : PSCmdlet
 public sealed class GetCopilotMessageCmdlet : PSCmdlet
 {
     [Parameter]
+    [CopilotSessionTransformation]
+    [ArgumentCompleter(typeof(CopilotSessionCompleter))]
     public CopilotSession? Session { get; set; }
 
     protected override void EndProcessing()
