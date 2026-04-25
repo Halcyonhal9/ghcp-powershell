@@ -35,20 +35,20 @@ internal static class ModuleState
 
     internal static CopilotSession ResolveSessionArgument(object? sessionArgument)
     {
-        sessionArgument = UnwrapPowerShellObject(sessionArgument);
+        var value = UnwrapPowerShellObject(sessionArgument);
 
-        if (sessionArgument is CopilotSession session)
+        if (value is CopilotSession session)
         {
             return session;
         }
 
-        if (sessionArgument is string sessionId)
+        if (value is string sessionId)
         {
-            return RequireSessionById(sessionId);
+            return ResolveSessionById(sessionId);
         }
 
         throw new PSArgumentException(
-            $"Session must be a {nameof(CopilotSession)} instance or a session id string, not {sessionArgument?.GetType().FullName ?? "null"}.",
+            $"Session must be a {nameof(CopilotSession)} instance or a session id string, not {value?.GetType().FullName ?? "null"}.",
             "Session");
     }
 
@@ -62,16 +62,16 @@ internal static class ModuleState
         return value;
     }
 
-    private static CopilotSession RequireSessionById(string sessionId)
+    private static CopilotSession ResolveSessionById(string sessionId)
     {
-        sessionId = sessionId.Trim();
-        if (sessionId.Length == 0)
+        var trimmedSessionId = sessionId.Trim();
+        if (trimmedSessionId.Length == 0)
         {
             throw new PSArgumentException("Session id cannot be empty.", "Session");
         }
 
         var currentSession = CurrentSession;
-        if (currentSession is not null && string.Equals(currentSession.SessionId, sessionId, StringComparison.Ordinal))
+        if (currentSession is not null && string.Equals(currentSession.SessionId, trimmedSessionId, StringComparison.Ordinal))
         {
             return currentSession;
         }
@@ -86,7 +86,7 @@ internal static class ModuleState
             OnUserInputRequest = UserInputHandlers.Interactive
         };
 
-        var resumedSession = client.ResumeSessionAsync(sessionId, config, CancellationToken.None)
+        var resumedSession = client.ResumeSessionAsync(trimmedSessionId, config, CancellationToken.None)
             .GetAwaiter().GetResult();
         CurrentSession = resumedSession;
         return resumedSession;

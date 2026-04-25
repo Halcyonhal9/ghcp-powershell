@@ -88,7 +88,7 @@ public class ModuleStateTests : IDisposable
     }
 
     [Fact]
-    public void RequireSession_ThrowsWhenSessionIdIsEmpty()
+    public void ResolveSessionArgument_ThrowsWhenSessionIdIsEmpty()
     {
         var ex = Assert.Throws<PSArgumentException>(
             () => ModuleState.ResolveSessionArgument("   "));
@@ -96,7 +96,7 @@ public class ModuleStateTests : IDisposable
     }
 
     [Fact]
-    public void RequireSession_UnwrapsPowerShellObjectValues()
+    public void ResolveSessionArgument_UnwrapsPowerShellObjectValues()
     {
         var ex = Assert.Throws<PSArgumentException>(
             () => ModuleState.ResolveSessionArgument(new PSObject("   ")));
@@ -104,7 +104,7 @@ public class ModuleStateTests : IDisposable
     }
 
     [Fact]
-    public void RequireSession_ThrowsWhenSessionValueHasUnsupportedType()
+    public void ResolveSessionArgument_ThrowsWhenSessionValueHasUnsupportedType()
     {
         var ex = Assert.Throws<PSArgumentException>(
             () => ModuleState.ResolveSessionArgument(123));
@@ -203,16 +203,16 @@ public class ModuleStateTests : IDisposable
     [InlineData(typeof(CloseCopilotSessionCmdlet))]
     public void SessionParameters_TransformSessionIdStrings(Type cmdletType)
     {
-        var prop = cmdletType.GetProperty("Session")!;
-        Assert.NotNull(prop);
-        Assert.Equal(typeof(CopilotSession), prop.PropertyType);
+        var sessionProperty = cmdletType.GetProperty("Session")!;
+        Assert.NotNull(sessionProperty);
+        Assert.Equal(typeof(CopilotSession), sessionProperty.PropertyType);
 
-        var transformer = Attribute.GetCustomAttribute(prop, typeof(CopilotSessionTransformationAttribute));
+        var transformer = Attribute.GetCustomAttribute(sessionProperty, typeof(CopilotSessionTransformationAttribute));
         Assert.NotNull(transformer);
 
-        var completer = Attribute.GetCustomAttribute(prop, typeof(ArgumentCompleterAttribute));
-        Assert.NotNull(completer);
-        Assert.Equal(typeof(CopilotSessionCompleter), ((ArgumentCompleterAttribute)completer).Type);
+        var completer = Assert.IsType<ArgumentCompleterAttribute>(
+            Attribute.GetCustomAttribute(sessionProperty, typeof(ArgumentCompleterAttribute)));
+        Assert.Equal(typeof(CopilotSessionCompleter), completer.Type);
     }
 
     [Fact]
