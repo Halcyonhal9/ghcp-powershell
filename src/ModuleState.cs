@@ -33,6 +33,64 @@ internal static class ModuleState
             "No Copilot session available. Run New-CopilotSession first, or pass -Session explicitly.");
     }
 
+    internal static CopilotSession ResolveSessionArgument(object? sessionArgument)
+    {
+        var value = UnwrapPowerShellObject(sessionArgument);
+
+        if (value is CopilotSession session)
+        {
+            return session;
+        }
+
+        if (value is string sessionId)
+        {
+            return ResolveSessionById(sessionId);
+        }
+
+        throw new PSArgumentException(
+            $"Session must be a {nameof(CopilotSession)} instance or a session id string, not {value?.GetType().FullName ?? "null"}.",
+            "Session");
+    }
+
+    private static object? UnwrapPowerShellObject(object? value)
+    {
+        while (value is PSObject psObject)
+        {
+            value = psObject.BaseObject;
+        }
+
+        return value;
+    }
+
+    private static CopilotSession ResolveSessionById(string sessionId)
+    {
+        var trimmedSessionId = sessionId.Trim();
+        if (trimmedSessionId.Length == 0)
+        {
+            throw new PSArgumentException("Session id cannot be empty.", "Session");
+        }
+
+        var currentSession = CurrentSession;
+        if (currentSession is not null && string.Equals(currentSession.SessionId, trimmedSessionId, StringComparison.Ordinal))
+        {
+            return currentSession;
+        }
+
+        var client = Client ?? throw new PSInvalidOperationException(
+            "No Copilot client available. Run New-CopilotClient first, or pass a CopilotSession object to -Session explicitly.");
+
+        var config = new ResumeSessionConfig
+        {
+            Streaming = true,
+            OnPermissionRequest = PermissionHandlers.Interactive,
+            OnUserInputRequest = UserInputHandlers.Interactive
+        };
+
+        var resumedSession = client.ResumeSessionAsync(trimmedSessionId, config, CancellationToken.None)
+            .GetAwaiter().GetResult();
+        return resumedSession;
+    }
+
     internal static bool TryRequireClient(CopilotClient? explicitClient, out CopilotClient client, out ErrorRecord? error)
     {
         try
@@ -147,6 +205,14 @@ internal static class ModuleState
             try { await client.StopAsync(); } catch { }
             try { client.Dispose(); } catch { }
         }
+    }
+}
+
+public sealed class CopilotSessionTransformationAttribute : ArgumentTransformationAttribute
+{
+    public override object Transform(EngineIntrinsics engineIntrinsics, object inputData)
+    {
+        return ModuleState.ResolveSessionArgument(inputData);
     }
 }
 

@@ -88,6 +88,9 @@ Close-CopilotSession
 # Resume a previous session.
 Resume-CopilotSession -SessionId "my-session"
 
+# Or send directly to a session id; the module resumes it through the current client.
+Send-CopilotMessage -Session "my-session" -Prompt "Pick up where we left off"
+
 # List, inspect, and delete sessions.
 Get-CopilotSession | Format-Table SessionId, Summary, ModifiedTime
 Get-CopilotSession -SessionId "my-session"

@@ -88,6 +88,31 @@ public class ModuleStateTests : IDisposable
     }
 
     [Fact]
+    public void ResolveSessionArgument_ThrowsWhenSessionIdIsEmpty()
+    {
+        var ex = Assert.Throws<PSArgumentException>(
+            () => ModuleState.ResolveSessionArgument("   "));
+        Assert.Contains("Session id cannot be empty", ex.Message);
+    }
+
+    [Fact]
+    public void ResolveSessionArgument_UnwrapsPowerShellObjectValues()
+    {
+        var ex = Assert.Throws<PSArgumentException>(
+            () => ModuleState.ResolveSessionArgument(new PSObject("   ")));
+        Assert.Contains("Session id cannot be empty", ex.Message);
+    }
+
+    [Fact]
+    public void ResolveSessionArgument_ThrowsWhenSessionValueHasUnsupportedType()
+    {
+        var ex = Assert.Throws<PSArgumentException>(
+            () => ModuleState.ResolveSessionArgument(123));
+        Assert.Contains("CopilotSession", ex.Message);
+        Assert.Contains("session id string", ex.Message);
+    }
+
+    [Fact]
     public void Client_SetAndGet()
     {
         var client = new CopilotClient(new CopilotClientOptions { AutoStart = false });
@@ -160,6 +185,43 @@ public class ModuleStateTests : IDisposable
         Assert.False(success);
         Assert.NotNull(error);
         Assert.Equal("NoSession", error!.FullyQualifiedErrorId);
+    }
+
+    [Fact]
+    public void ResolveSessionArgument_ThrowsWithNoClientWhenResolvingSessionId()
+    {
+        var ex = Assert.Throws<PSInvalidOperationException>(
+            () => ModuleState.ResolveSessionArgument("session-123"));
+        Assert.Contains("New-CopilotClient", ex.Message);
+        Assert.Null(ModuleState.CurrentSession);
+    }
+
+    [Theory]
+    [InlineData(typeof(SendCopilotMessageCmdlet))]
+    [InlineData(typeof(SendCopilotMessageAsyncCmdlet))]
+    [InlineData(typeof(GetCopilotMessageCmdlet))]
+    [InlineData(typeof(SetCopilotModelCmdlet))]
+    [InlineData(typeof(CloseCopilotSessionCmdlet))]
+    public void SessionParameters_TransformSessionIdStrings(Type cmdletType)
+    {
+        var sessionProperty = cmdletType.GetProperty("Session")!;
+        Assert.NotNull(sessionProperty);
+        Assert.Equal(typeof(CopilotSession), sessionProperty.PropertyType);
+
+        var transformer = Attribute.GetCustomAttribute(sessionProperty, typeof(CopilotSessionTransformationAttribute));
+        Assert.NotNull(transformer);
+
+        var completer = Assert.IsType<ArgumentCompleterAttribute>(
+            Attribute.GetCustomAttribute(sessionProperty, typeof(ArgumentCompleterAttribute)));
+        Assert.Equal(typeof(CopilotSessionCompleter), completer.Type);
+    }
+
+    [Fact]
+    public void CopilotSessionTransformation_RejectsUnsupportedValues()
+    {
+        var transformer = new CopilotSessionTransformationAttribute();
+        var ex = Assert.Throws<PSArgumentException>(() => transformer.Transform(null!, 123));
+        Assert.Contains("session id string", ex.Message);
     }
 
     [Fact]
