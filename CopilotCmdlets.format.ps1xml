@@ -146,5 +146,220 @@
       </ListControl>
     </View>
 
+    <!-- ============================================================ -->
+    <!-- CopilotClient – table view (default)                          -->
+    <!-- ============================================================ -->
+    <View>
+      <Name>CopilotClient_Table</Name>
+      <ViewSelectedBy>
+        <TypeName>GitHub.Copilot.SDK.CopilotClient</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader><Label>State</Label><Width>14</Width></TableColumnHeader>
+          <TableColumnHeader><Label>ActualPort</Label><Width>10</Width></TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem><PropertyName>State</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>ActualPort</PropertyName></TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+
+    <!-- ============================================================ -->
+    <!-- CopilotClient – list view (Format-List)                       -->
+    <!-- ============================================================ -->
+    <View>
+      <Name>CopilotClient_List</Name>
+      <ViewSelectedBy>
+        <TypeName>GitHub.Copilot.SDK.CopilotClient</TypeName>
+      </ViewSelectedBy>
+      <ListControl>
+        <ListEntries>
+          <ListEntry>
+            <ListItems>
+              <ListItem><PropertyName>State</PropertyName></ListItem>
+              <ListItem><PropertyName>ActualPort</PropertyName></ListItem>
+            </ListItems>
+          </ListEntry>
+        </ListEntries>
+      </ListControl>
+    </View>
+
+    <!-- ============================================================ -->
+    <!-- CopilotSession – table view (default)                         -->
+    <!-- ============================================================ -->
+    <View>
+      <Name>CopilotSession_Table</Name>
+      <ViewSelectedBy>
+        <TypeName>GitHub.Copilot.SDK.CopilotSession</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader><Label>SessionId</Label></TableColumnHeader>
+          <TableColumnHeader><Label>WorkspacePath</Label></TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem><PropertyName>SessionId</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>WorkspacePath</PropertyName></TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+
+    <!-- ============================================================ -->
+    <!-- CopilotSession – list view (Format-List)                      -->
+    <!-- ============================================================ -->
+    <View>
+      <Name>CopilotSession_List</Name>
+      <ViewSelectedBy>
+        <TypeName>GitHub.Copilot.SDK.CopilotSession</TypeName>
+      </ViewSelectedBy>
+      <ListControl>
+        <ListEntries>
+          <ListEntry>
+            <ListItems>
+              <ListItem><PropertyName>SessionId</PropertyName></ListItem>
+              <ListItem><PropertyName>WorkspacePath</PropertyName></ListItem>
+              <ListItem><Label>UiElicitation</Label><ScriptBlock>if ($_.Capabilities -and $_.Capabilities.Ui) { $_.Capabilities.Ui.Elicitation }</ScriptBlock></ListItem>
+            </ListItems>
+          </ListEntry>
+        </ListEntries>
+      </ListControl>
+    </View>
+
+    <!-- ============================================================ -->
+    <!-- PingResponse – list view (Format-List)                        -->
+    <!-- ============================================================ -->
+    <View>
+      <Name>PingResponse_List</Name>
+      <ViewSelectedBy>
+        <TypeName>GitHub.Copilot.SDK.PingResponse</TypeName>
+      </ViewSelectedBy>
+      <ListControl>
+        <ListEntries>
+          <ListEntry>
+            <ListItems>
+              <ListItem><PropertyName>Message</PropertyName></ListItem>
+              <ListItem><PropertyName>ProtocolVersion</PropertyName></ListItem>
+              <ListItem><PropertyName>Timestamp</PropertyName></ListItem>
+              <ListItem><Label>TimestampUtc</Label><ScriptBlock>[System.DateTimeOffset]::FromUnixTimeMilliseconds($_.Timestamp).UtcDateTime</ScriptBlock></ListItem>
+            </ListItems>
+          </ListEntry>
+        </ListEntries>
+      </ListControl>
+    </View>
+
+    <!-- ============================================================ -->
+    <!-- SectionOverride – list view (Format-List)                     -->
+    <!-- ============================================================ -->
+    <View>
+      <Name>SectionOverride_List</Name>
+      <ViewSelectedBy>
+        <TypeName>GitHub.Copilot.SDK.SectionOverride</TypeName>
+      </ViewSelectedBy>
+      <ListControl>
+        <ListEntries>
+          <ListEntry>
+            <ListItems>
+              <ListItem><PropertyName>Action</PropertyName></ListItem>
+              <ListItem><PropertyName>Content</PropertyName></ListItem>
+              <ListItem><Label>HasTransform</Label><ScriptBlock>$null -ne $_.Transform</ScriptBlock></ListItem>
+            </ListItems>
+          </ListEntry>
+        </ListEntries>
+      </ListControl>
+    </View>
+
+    <!-- ============================================================ -->
+    <!-- CopilotAsyncResult – table view (default)                     -->
+    <!-- ============================================================ -->
+    <View>
+      <Name>CopilotAsyncResult_Table</Name>
+      <ViewSelectedBy>
+        <TypeName>CopilotCmdlets.CopilotAsyncResult</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader><Label>IsCompleted</Label><Width>11</Width></TableColumnHeader>
+          <TableColumnHeader><Label>SessionId</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Tag</Label></TableColumnHeader>
+          <TableColumnHeader><Label>MessageId</Label></TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem><PropertyName>IsCompleted</PropertyName></TableColumnItem>
+              <TableColumnItem><ScriptBlock>if ($_.Session) { $_.Session.SessionId }</ScriptBlock></TableColumnItem>
+              <TableColumnItem><PropertyName>Tag</PropertyName></TableColumnItem>
+              <TableColumnItem><ScriptBlock>if ($_.Result) { $_.Result.MessageId }</ScriptBlock></TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+
+    <!-- ============================================================ -->
+    <!-- CopilotAsyncResult – list view (Format-List)                  -->
+    <!-- ============================================================ -->
+    <View>
+      <Name>CopilotAsyncResult_List</Name>
+      <ViewSelectedBy>
+        <TypeName>CopilotCmdlets.CopilotAsyncResult</TypeName>
+      </ViewSelectedBy>
+      <ListControl>
+        <ListEntries>
+          <ListEntry>
+            <ListItems>
+              <ListItem><PropertyName>Tag</PropertyName></ListItem>
+              <ListItem><PropertyName>IsCompleted</PropertyName></ListItem>
+              <ListItem><Label>SessionId</Label><ScriptBlock>if ($_.Session) { $_.Session.SessionId }</ScriptBlock></ListItem>
+              <ListItem><Label>MessageId</Label><ScriptBlock>if ($_.Result) { $_.Result.MessageId }</ScriptBlock></ListItem>
+              <ListItem><Label>Content</Label><ScriptBlock>if ($_.Result) { $_.Result.Content }</ScriptBlock></ListItem>
+              <ListItem><Label>TotalInputTokens</Label><ScriptBlock>if ($_.Result) { $_.Result.TotalInputTokens }</ScriptBlock></ListItem>
+              <ListItem><Label>TotalOutputTokens</Label><ScriptBlock>if ($_.Result) { $_.Result.TotalOutputTokens }</ScriptBlock></ListItem>
+            </ListItems>
+          </ListEntry>
+        </ListEntries>
+      </ListControl>
+    </View>
+
+    <!-- ============================================================ -->
+    <!-- SessionEvent – table view (default)                           -->
+    <!-- Hides the per-event-type Data payload, which dumps as a      -->
+    <!-- multi-line object graph by default.                           -->
+    <!-- ============================================================ -->
+    <View>
+      <Name>SessionEvent_Table</Name>
+      <ViewSelectedBy>
+        <TypeName>GitHub.Copilot.SDK.SessionEvent</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader><Label>Timestamp</Label><Width>22</Width></TableColumnHeader>
+          <TableColumnHeader><Label>Type</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Id</Label></TableColumnHeader>
+          <TableColumnHeader><Label>ParentId</Label></TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem><PropertyName>Timestamp</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>Type</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>Id</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>ParentId</PropertyName></TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+
   </ViewDefinitions>
 </Configuration>

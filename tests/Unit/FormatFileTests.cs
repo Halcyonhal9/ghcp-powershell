@@ -53,6 +53,16 @@ public class FormatFileTests
     [InlineData("ModelInfo_List", "GitHub.Copilot.SDK.ModelInfo")]
     [InlineData("SessionMetadata_Table", "GitHub.Copilot.SDK.SessionMetadata")]
     [InlineData("SessionMetadata_List", "GitHub.Copilot.SDK.SessionMetadata")]
+    [InlineData("CopilotMessageResult_List", "CopilotCmdlets.CopilotMessageResult")]
+    [InlineData("CopilotClient_Table", "GitHub.Copilot.SDK.CopilotClient")]
+    [InlineData("CopilotClient_List", "GitHub.Copilot.SDK.CopilotClient")]
+    [InlineData("CopilotSession_Table", "GitHub.Copilot.SDK.CopilotSession")]
+    [InlineData("CopilotSession_List", "GitHub.Copilot.SDK.CopilotSession")]
+    [InlineData("PingResponse_List", "GitHub.Copilot.SDK.PingResponse")]
+    [InlineData("SectionOverride_List", "GitHub.Copilot.SDK.SectionOverride")]
+    [InlineData("CopilotAsyncResult_Table", "CopilotCmdlets.CopilotAsyncResult")]
+    [InlineData("CopilotAsyncResult_List", "CopilotCmdlets.CopilotAsyncResult")]
+    [InlineData("SessionEvent_Table", "GitHub.Copilot.SDK.SessionEvent")]
     public void FormatFile_ContainsExpectedView(string viewName, string typeName)
     {
         var views = LoadFormatDoc().Descendants("View");
@@ -83,6 +93,53 @@ public class FormatFileTests
         var scriptBlocks = sessionTable.Descendants("ScriptBlock").Select(s => s.Value).ToList();
         Assert.Contains(scriptBlocks, s => s.Contains("Context.Repository"));
         Assert.Contains(scriptBlocks, s => s.Contains("Context.Branch"));
+    }
+
+    [Fact]
+    public void FormatFile_CopilotAsyncResultFlattensSessionAndResult()
+    {
+        var doc = LoadFormatDoc();
+        var asyncTable = doc.Descendants("View")
+            .First(v => v.Element("Name")?.Value == "CopilotAsyncResult_Table");
+        var asyncList = doc.Descendants("View")
+            .First(v => v.Element("Name")?.Value == "CopilotAsyncResult_List");
+
+        var tableScripts = asyncTable.Descendants("ScriptBlock").Select(s => s.Value).ToList();
+        Assert.Contains(tableScripts, s => s.Contains("Session.SessionId"));
+        Assert.Contains(tableScripts, s => s.Contains("Result.MessageId"));
+
+        var listScripts = asyncList.Descendants("ScriptBlock").Select(s => s.Value).ToList();
+        Assert.Contains(listScripts, s => s.Contains("Result.Content"));
+        Assert.Contains(listScripts, s => s.Contains("Result.TotalInputTokens"));
+        Assert.Contains(listScripts, s => s.Contains("Result.TotalOutputTokens"));
+    }
+
+    [Fact]
+    public void FormatFile_SectionOverrideHidesTransformDelegate()
+    {
+        var view = LoadFormatDoc().Descendants("View")
+            .First(v => v.Element("Name")?.Value == "SectionOverride_List");
+
+        var properties = view.Descendants("PropertyName").Select(p => p.Value).ToList();
+        // Transform is a Func<string,string> delegate; never expose it as a property,
+        // only as a "HasTransform" boolean computed via ScriptBlock.
+        Assert.DoesNotContain("Transform", properties);
+        var scripts = view.Descendants("ScriptBlock").Select(s => s.Value).ToList();
+        Assert.Contains(scripts, s => s.Contains("$_.Transform"));
+    }
+
+    [Fact]
+    public void FormatFile_SessionEventTableOmitsDataPayload()
+    {
+        var view = LoadFormatDoc().Descendants("View")
+            .First(v => v.Element("Name")?.Value == "SessionEvent_Table");
+
+        var properties = view.Descendants("PropertyName").Select(p => p.Value).ToList();
+        // Data payloads are subclass-specific and dump as a multi-line object graph;
+        // the table view should expose only the SessionEvent base properties.
+        Assert.DoesNotContain("Data", properties);
+        Assert.Contains("Type", properties);
+        Assert.Contains("Timestamp", properties);
     }
 
     [Fact]
