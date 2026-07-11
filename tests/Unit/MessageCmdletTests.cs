@@ -1,3 +1,4 @@
+#pragma warning disable GHCP001 // experimental SDK members: AssistantUsageData.Cost
 using System.Management.Automation;
 using GitHub.Copilot;
 using Xunit;

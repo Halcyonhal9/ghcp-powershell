@@ -103,6 +103,46 @@ public class McpServerHelperTests
     }
 
     [Fact]
+    public void Build_ThrowsArgumentExceptionForNonNumericTimeout()
+    {
+        var servers = new Hashtable
+        {
+            ["s"] = new Hashtable { ["Command"] = "cmd", ["Timeout"] = "not-a-number" }
+        };
+
+        var ex = Assert.Throws<ArgumentException>(() => McpServerHelper.Build(servers));
+        Assert.Contains("Timeout", ex.Message);
+        Assert.Contains("'s'", ex.Message);
+        Assert.IsType<FormatException>(ex.InnerException);
+    }
+
+    [Fact]
+    public void Build_ThrowsArgumentExceptionForUnconvertibleTimeout()
+    {
+        var servers = new Hashtable
+        {
+            ["s"] = new Hashtable { ["Command"] = "cmd", ["Timeout"] = new Hashtable() }
+        };
+
+        var ex = Assert.Throws<ArgumentException>(() => McpServerHelper.Build(servers));
+        Assert.Contains("Timeout", ex.Message);
+        Assert.IsType<InvalidCastException>(ex.InnerException);
+    }
+
+    [Fact]
+    public void Build_AcceptsNumericStringTimeout()
+    {
+        var servers = new Hashtable
+        {
+            ["s"] = new Hashtable { ["Command"] = "cmd", ["Timeout"] = "2500" }
+        };
+
+        var result = McpServerHelper.Build(servers);
+
+        Assert.Equal(2500, result["s"].Timeout);
+    }
+
+    [Fact]
     public void Build_SingleArgStringBecomesList()
     {
         var servers = new Hashtable

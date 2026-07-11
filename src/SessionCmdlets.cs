@@ -1,3 +1,4 @@
+#pragma warning disable GHCP001 // experimental SDK members: EnableCitations, SessionLimits
 using System.Collections;
 using System.Management.Automation;
 using GitHub.Copilot;
@@ -400,7 +401,17 @@ internal static class McpServerHelper
 
         config.Tools = GetStringList(settings, "Tools");
         if (GetValue(settings, "Timeout") is { } timeout)
-            config.Timeout = Convert.ToInt32(timeout);
+        {
+            try
+            {
+                config.Timeout = Convert.ToInt32(timeout);
+            }
+            catch (Exception ex) when (ex is FormatException or InvalidCastException or OverflowException)
+            {
+                throw new ArgumentException(
+                    $"MCP server '{name}' has an invalid 'Timeout' value '{timeout}'; expected an integer number of milliseconds.", ex);
+            }
+        }
         return config;
     }
 

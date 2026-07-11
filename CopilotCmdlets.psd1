@@ -4,7 +4,7 @@
     GUID                 = 'a7f3d8e1-4b2c-4f9a-8e6d-1c3b5a7f9e2d'
     Author               = 'Ben Appleby'
     Description          = 'PowerShell Cmdlets for the GitHub Copilot SDK'
-    PowerShellVersion    = '7.4'
+    PowerShellVersion    = '7.6'
     CompatiblePSEditions = @('Core')
     FormatsToProcess     = @('CopilotCmdlets.format.ps1xml')
     CmdletsToExport      = @(
@@ -33,9 +33,22 @@
     VariablesToExport    = @()
     PrivateData          = @{
         PSData = @{
-            Tags       = @('Copilot', 'Github', 'SDK')
-            LicenseUri = 'https://github.com/Halcyonhal9/ghcp-powershell/blob/main/LICENSE'
-            ProjectUri = 'https://github.com/Halcyonhal9/ghcp-powershell'
+            Tags         = @('Copilot', 'Github', 'SDK')
+            LicenseUri   = 'https://github.com/Halcyonhal9/ghcp-powershell/blob/main/LICENSE'
+            ProjectUri   = 'https://github.com/Halcyonhal9/ghcp-powershell'
+            ReleaseNotes = @'
+0.5.0 - Upgrade to GitHub.Copilot.SDK 1.0.6.
+BREAKING: SDK types moved from the GitHub.Copilot.SDK namespace to
+GitHub.Copilot / GitHub.Copilot.Rpc. Scripts that match pipeline output by
+type name (e.g. [GitHub.Copilot.SDK.AssistantMessageEvent]) must update to
+the new names. Get-CopilotMessage now returns the session event log via the
+SDK's GetEventsAsync.
+New cmdlets: Get-CopilotStatus, Get-CopilotAuthStatus, Stop-CopilotMessage,
+New-CopilotTool. New session options: -McpServers, -Tool, -EnableCitations,
+-MaxAiCredits, -ExcludedBuiltInAgents, -DisabledSkills, -ContinuePendingWork.
+New client options: -WorkingDirectory, -Environment, -UseLoggedInUser.
+New message options: -Mode, -DisplayPrompt.
+'@
         }
     }
 }

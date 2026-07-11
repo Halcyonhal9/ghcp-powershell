@@ -103,4 +103,119 @@ public class NewFeatureTests : IAsyncLifetime
         ps.AddCommand("Close-CopilotSession");
         ps.Invoke();
     }
+
+    [Fact]
+    public void SendCopilotMessageAsync_ReceiveReturnsTaggedResult()
+    {
+        ps.AddScript(@"
+            $null = New-CopilotSession -AutoApprove
+            $handle = Send-CopilotMessageAsync 'Say exactly: async-ok' -Tag 'tag-42' -Mode enqueue
+            $handle | Receive-CopilotAsyncResult -Timeout (New-TimeSpan -Seconds 120)
+        ");
+        var results = ps.Invoke();
+
+        Assert.False(ps.HadErrors, string.Join("; ", ps.Streams.Error));
+        var result = Assert.IsType<CopilotMessageResult>(results[^1].BaseObject);
+        Assert.Contains("async-ok", result.Content);
+        Assert.Equal("tag-42", result.Tag);
+        Assert.NotNull(result.MessageId);
+
+        ps.Commands.Clear();
+        ps.AddCommand("Close-CopilotSession");
+        ps.Invoke();
+    }
+
+    [Fact]
+    public void SendCopilotMessage_FileAttachmentIsReadable()
+    {
+        var attachmentPath = Path.Combine(Path.GetTempPath(), $"copilot-e2e-{Guid.NewGuid():N}.txt");
+        File.WriteAllText(attachmentPath, "The secret phrase is quartz-77.");
+        try
+        {
+            ps.AddScript($@"
+                $null = New-CopilotSession -AutoApprove
+                Send-CopilotMessage 'What is the secret phrase in the attached file? Reply with only the phrase.' -Attachment '{attachmentPath}' -Timeout (New-TimeSpan -Seconds 120)
+            ");
+            var results = ps.Invoke();
+
+            Assert.False(ps.HadErrors, string.Join("; ", ps.Streams.Error));
+            var result = Assert.IsType<CopilotMessageResult>(results[^1].BaseObject);
+            Assert.Contains("quartz-77", result.Content);
+        }
+        finally
+        {
+            File.Delete(attachmentPath);
+            ps.Commands.Clear();
+            ps.AddCommand("Close-CopilotSession");
+            ps.Invoke();
+        }
+    }
+
+    [Fact]
+    public void SendCopilotMessage_BlobAttachmentIsReadable()
+    {
+        ps.AddScript(@"
+            $null = New-CopilotSession -AutoApprove
+            $blob = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes('The magic word is zebra-99.'))
+            Send-CopilotMessage 'What is the magic word in the attached document? Reply with only the word.' -BlobData $blob -BlobMimeType 'text/plain' -Timeout (New-TimeSpan -Seconds 120)
+        ");
+        var results = ps.Invoke();
+
+        Assert.False(ps.HadErrors, string.Join("; ", ps.Streams.Error));
+        var result = Assert.IsType<CopilotMessageResult>(results[^1].BaseObject);
+        Assert.Contains("zebra-99", result.Content);
+
+        ps.Commands.Clear();
+        ps.AddCommand("Close-CopilotSession");
+        ps.Invoke();
+    }
+
+    [Fact]
+    public void StopCopilotMessage_AbortsInFlightMessage()
+    {
+        // Start a long task without waiting, abort it, then confirm the
+        // session returns to idle well before the task could finish.
+        ps.AddScript(@"
+            $null = New-CopilotSession -AutoApprove
+            $handle = Send-CopilotMessageAsync 'Count from 1 to 500, one number per line, no shortcuts.'
+            Start-Sleep -Seconds 3
+            Stop-CopilotMessage
+            $sw = [System.Diagnostics.Stopwatch]::StartNew()
+            $null = $handle | Receive-CopilotAsyncResult -Timeout (New-TimeSpan -Seconds 60)
+            $sw.Elapsed.TotalSeconds
+        ");
+        var results = ps.Invoke();
+
+        Assert.False(ps.HadErrors, string.Join("; ", ps.Streams.Error));
+        var secondsToIdle = Convert.ToDouble(results[^1].BaseObject);
+        Assert.True(secondsToIdle < 45, $"expected prompt idle after abort, took {secondsToIdle:F1}s");
+        Assert.DoesNotContain(ps.Streams.Warning, w => w.Message.Contains("Timed out"));
+
+        ps.Commands.Clear();
+        ps.AddCommand("Close-CopilotSession");
+        ps.Invoke();
+    }
+
+    [Fact]
+    public void McpServer_ToolRoundTrip()
+    {
+        // Requires npx (Node) on PATH: spawns @modelcontextprotocol/server-everything.
+        ps.AddScript(@"
+            $null = New-CopilotSession -AutoApprove -McpServers @{
+                everything = @{ Command = 'npx'; Args = @('-y', '@modelcontextprotocol/server-everything'); Tools = @('echo') }
+            }
+            Send-CopilotMessage ""Call the echo tool with message 'mcp-roundtrip-ok' and reply with only the text it returned."" -Timeout (New-TimeSpan -Seconds 180)
+        ");
+        var results = ps.Invoke();
+
+        Assert.False(ps.HadErrors, string.Join("; ", ps.Streams.Error));
+        var result = Assert.IsType<CopilotMessageResult>(results[^1].BaseObject);
+        Assert.Contains("mcp-roundtrip-ok", result.Content);
+        Assert.Contains(result.Events, e =>
+            e is ToolExecutionStartEvent start && start.Data.ToolName.Contains("echo"));
+
+        ps.Commands.Clear();
+        ps.AddCommand("Close-CopilotSession");
+        ps.Invoke();
+    }
 }

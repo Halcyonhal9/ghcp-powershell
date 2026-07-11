@@ -1,3 +1,4 @@
+#pragma warning disable GHCP001 // experimental SDK members: PermissionDecision variants
 using System.Collections;
 using System.IO;
 using System.Management.Automation;

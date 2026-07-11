@@ -37,7 +37,7 @@ public sealed class NewCopilotClientCmdlet : PSCmdlet
     [Parameter]
     public SwitchParameter UseLoggedInUser { get; set; }
 
-    protected override void EndProcessing()
+    internal CopilotClientOptions BuildOptions()
     {
         var options = new CopilotClientOptions();
 
@@ -79,6 +79,13 @@ public sealed class NewCopilotClientCmdlet : PSCmdlet
             if (cli is not null)
                 options.Connection = RuntimeConnection.ForStdio(cli);
         }
+
+        return options;
+    }
+
+    protected override void EndProcessing()
+    {
+        var options = BuildOptions();
 
         CopilotClient client;
         try

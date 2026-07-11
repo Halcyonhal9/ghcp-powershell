@@ -204,6 +204,19 @@ public class ToolCmdletTests
     }
 
     [Fact]
+    public async Task InvokeAsync_RunspaceIsolationSurfacesMissingCommandsClearly()
+    {
+        // Tools run in a fresh runspace with no access to the caller's
+        // functions; a tool referencing one must fail with a clear error.
+        var tool = new ScriptBlockToolFunction("isolated", "Calls caller function",
+            ScriptBlock.Create("Get-FunctionOnlyInCallerSession"));
+
+        var ex = await Assert.ThrowsAnyAsync<Exception>(
+            async () => await tool.InvokeAsync(new AIFunctionArguments()));
+        Assert.Contains("Get-FunctionOnlyInCallerSession", ex.Message);
+    }
+
+    [Fact]
     public async Task InvokeAsync_FormatsComplexOutput()
     {
         var tool = new ScriptBlockToolFunction("list", "Lists",

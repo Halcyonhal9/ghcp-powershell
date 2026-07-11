@@ -1,5 +1,12 @@
 # CopilotCmdlets - PowerShell Wrapper for GitHub Copilot SDK
 
+> **Historical document.** This is the original design written against
+> `GitHub.Copilot.SDK` 0.1.x. The module has since migrated to SDK 1.0.x:
+> types moved to the `GitHub.Copilot` namespace, `CliPath`/`CliUrl`/`UseStdio`
+> became `RuntimeConnection` factories, `PermissionRequestResult` became
+> `PermissionDecision`, and `GetMessagesAsync` became `GetEventsAsync`.
+> See `README.md` for the current surface; this doc is kept for rationale.
+
 ## 1. Goals
 
 - Expose the full surface of the .NET `GitHub.Copilot.SDK` library as PowerShell cmdlets.
