@@ -234,11 +234,6 @@ public class CallbackBuilderTests : IAsyncLifetime
         session = Assert.IsType<CopilotSession>(Assert.Single(sessionResults).BaseObject);
         ResetPowerShell();
 
-        await WaitForAsync(
-            _ => Task.FromResult(File.Exists(startPath)),
-            TimeSpan.FromSeconds(10),
-            "Timed out waiting for the session-start hook.");
-
         ps.AddCommand("Send-CopilotMessage")
             .AddParameter(
                 "Prompt",
@@ -252,9 +247,12 @@ public class CallbackBuilderTests : IAsyncLifetime
         ResetPowerShell();
 
         await WaitForAsync(
-            _ => Task.FromResult(File.Exists(prePath) && File.Exists(postPath)),
+            _ => Task.FromResult(
+                File.Exists(startPath) &&
+                File.Exists(prePath) &&
+                File.Exists(postPath)),
             TimeSpan.FromSeconds(15),
-            "Timed out waiting for pre/post tool hooks.");
+            "Timed out waiting for session-start and pre/post tool hooks.");
 
         Assert.Equal(
             $"{session.SessionId}|{session.SessionId}",

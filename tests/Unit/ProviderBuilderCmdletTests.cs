@@ -1,5 +1,7 @@
 #pragma warning disable GHCP001 // experimental SDK members: BearerTokenProvider, NamedProviderConfig
+using System.Collections;
 using System.Management.Automation;
+using System.Management.Automation.Runspaces;
 using GitHub.Copilot;
 using Xunit;
 
@@ -42,11 +44,20 @@ public class ProviderBuilderCmdletTests
             ("BearerTokenProvider", typeof(ScriptBlock)),
             ("BearerTokenProviderDelegate", typeof(Func<ProviderTokenArgs, Task<string>>)),
             ("Azure", typeof(AzureOptions)),
-            ("Headers", typeof(IDictionary<string, string>)),
+            ("Headers", typeof(IDictionary)),
             ("ModelId", typeof(string)),
             ("WireModel", typeof(string)),
             ("MaxPromptTokens", typeof(int?)),
             ("MaxOutputTokens", typeof(int?)));
+    }
+
+    [Fact]
+    public void Provider_BaseUrlIsMandatoryPositionZero()
+    {
+        var parameter = GetParameter<NewCopilotProviderCmdlet>("BaseUrl");
+
+        Assert.True(parameter.Mandatory);
+        Assert.Equal(0, parameter.Position);
     }
 
     [Fact]
@@ -62,7 +73,19 @@ public class ProviderBuilderCmdletTests
             ("BearerTokenProvider", typeof(ScriptBlock)),
             ("BearerTokenProviderDelegate", typeof(Func<ProviderTokenArgs, Task<string>>)),
             ("Azure", typeof(AzureOptions)),
-            ("Headers", typeof(IDictionary<string, string>)));
+            ("Headers", typeof(IDictionary)));
+    }
+
+    [Fact]
+    public void NamedProvider_NameAndBaseUrlAreMandatoryPositionalParameters()
+    {
+        var name = GetParameter<NewCopilotNamedProviderCmdlet>("Name");
+        var baseUrl = GetParameter<NewCopilotNamedProviderCmdlet>("BaseUrl");
+
+        Assert.True(name.Mandatory);
+        Assert.Equal(0, name.Position);
+        Assert.True(baseUrl.Mandatory);
+        Assert.Equal(1, baseUrl.Position);
     }
 
     [Theory]
@@ -91,7 +114,7 @@ public class ProviderBuilderCmdletTests
         Func<ProviderTokenArgs, Task<string>> callback =
             args => Task.FromResult($"{args.ProviderName}:{args.SessionId}");
         var azure = new AzureOptions { ApiVersion = "2026-01-01" };
-        IDictionary<string, string> headers = new Dictionary<string, string>
+        IDictionary headers = new Hashtable
         {
             ["x-test"] = "value"
         };
@@ -120,7 +143,7 @@ public class ProviderBuilderCmdletTests
         Assert.Equal("placeholder-bearer-token", provider.BearerToken);
         Assert.Same(callback, provider.BearerTokenProvider);
         Assert.Same(azure, provider.Azure);
-        Assert.Same(headers, provider.Headers);
+        Assert.Equal("value", provider.Headers!["x-test"]);
         Assert.Equal("known-model", provider.ModelId);
         Assert.Equal("deployment-name", provider.WireModel);
         Assert.Equal(1234, provider.MaxPromptTokens);
@@ -133,7 +156,7 @@ public class ProviderBuilderCmdletTests
         Func<ProviderTokenArgs, Task<string>> callback =
             args => Task.FromResult($"{args.ProviderName}:{args.SessionId}");
         var azure = new AzureOptions { ApiVersion = "2026-01-01" };
-        IDictionary<string, string> headers = new Dictionary<string, string>
+        IDictionary headers = new Hashtable
         {
             ["x-test"] = "value"
         };
@@ -158,7 +181,7 @@ public class ProviderBuilderCmdletTests
         Assert.Equal("placeholder-bearer-token", provider.BearerToken);
         Assert.Same(callback, provider.BearerTokenProvider);
         Assert.Same(azure, provider.Azure);
-        Assert.Same(headers, provider.Headers);
+        Assert.Equal("value", provider.Headers!["x-test"]);
     }
 
     [Fact]
@@ -197,6 +220,75 @@ public class ProviderBuilderCmdletTests
         Assert.Null(provider.BearerTokenProvider);
         Assert.Null(provider.Azure);
         Assert.Null(provider.Headers);
+    }
+
+    [Fact]
+    public void Provider_HeadersAcceptPowerShellHashtable()
+    {
+        var state = InitialSessionState.CreateDefault2();
+        state.Commands.Add(new SessionStateCmdletEntry(
+            "New-CopilotProvider",
+            typeof(NewCopilotProviderCmdlet),
+            null));
+        using var ps = PowerShell.Create(state);
+        ps.AddCommand("New-CopilotProvider")
+            .AddParameter("BaseUrl", "https://provider.invalid")
+            .AddParameter("Headers", new Hashtable
+            {
+                ["X-Test"] = "value"
+            });
+
+        var output = ps.Invoke();
+
+        Assert.False(ps.HadErrors, string.Join("; ", ps.Streams.Error));
+        var provider = Assert.IsType<ProviderConfig>(Assert.Single(output).BaseObject);
+        Assert.Equal("value", provider.Headers!["X-Test"]);
+    }
+
+    [Fact]
+    public async Task Provider_CallbackPreservesRestrictedCommandVisibility()
+    {
+        var state = InitialSessionState.Create();
+        state.LanguageMode = PSLanguageMode.FullLanguage;
+        state.Commands.Add(new SessionStateCmdletEntry(
+            "New-CopilotProvider",
+            typeof(NewCopilotProviderCmdlet),
+            null));
+        state.Commands.Add(new SessionStateFunctionEntry(
+            "Get-AllowedToken",
+            "'allowed-token'"));
+
+        var allowedProvider = BuildProviderInRunspace(
+            state,
+            "Get-AllowedToken");
+        var allowed = await allowedProvider.BearerTokenProvider!(
+            new ProviderTokenArgs
+            {
+                ProviderName = "default",
+                SessionId = "restricted"
+            });
+
+        Assert.Equal("allowed-token", allowed);
+
+        var restrictedState = InitialSessionState.Create();
+        restrictedState.LanguageMode = PSLanguageMode.FullLanguage;
+        restrictedState.Commands.Add(new SessionStateCmdletEntry(
+            "New-CopilotProvider",
+            typeof(NewCopilotProviderCmdlet),
+            null));
+        var restrictedProvider = BuildProviderInRunspace(
+            restrictedState,
+            "Get-Process | Out-Null; 'token'");
+
+        var error = await Assert.ThrowsAnyAsync<Exception>(() =>
+            restrictedProvider.BearerTokenProvider!(
+                new ProviderTokenArgs
+                {
+                    ProviderName = "default",
+                    SessionId = "restricted"
+                }));
+
+        Assert.Contains("Get-Process", error.Message);
     }
 
     [Fact]
@@ -297,5 +389,26 @@ public class ProviderBuilderCmdletTests
             Assert.NotNull(Attribute.GetCustomAttribute(
                 property, typeof(ParameterAttribute)));
         }
+    }
+
+    private static ParameterAttribute GetParameter<TCmdlet>(string name)
+    {
+        var property = typeof(TCmdlet).GetProperty(name)!;
+        return Assert.IsType<ParameterAttribute>(
+            Attribute.GetCustomAttribute(property, typeof(ParameterAttribute)));
+    }
+
+    private static ProviderConfig BuildProviderInRunspace(
+        InitialSessionState state,
+        string callback)
+    {
+        using var ps = PowerShell.Create(state);
+        ps.AddCommand("New-CopilotProvider")
+            .AddParameter("BaseUrl", "https://provider.invalid")
+            .AddParameter("BearerTokenProvider", ScriptBlock.Create(callback));
+        var output = ps.Invoke();
+
+        Assert.False(ps.HadErrors, string.Join("; ", ps.Streams.Error));
+        return Assert.IsType<ProviderConfig>(Assert.Single(output).BaseObject);
     }
 }

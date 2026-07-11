@@ -1,4 +1,5 @@
 #pragma warning disable GHCP001 // experimental SDK members: BearerTokenProvider, NamedProviderConfig
+using System.Collections;
 using System.Management.Automation;
 using GitHub.Copilot;
 
@@ -20,7 +21,7 @@ public sealed class NewCopilotProviderCmdlet : PSCmdlet
     [Parameter]
     public string? Transport { get; set; }
 
-    [Parameter]
+    [Parameter(Mandatory = true, Position = 0)]
     public string BaseUrl { get; set; } = string.Empty;
 
     [Parameter]
@@ -39,7 +40,7 @@ public sealed class NewCopilotProviderCmdlet : PSCmdlet
     public AzureOptions? Azure { get; set; }
 
     [Parameter]
-    public IDictionary<string, string>? Headers { get; set; }
+    public IDictionary? Headers { get; set; }
 
     [Parameter]
     public string? ModelId { get; set; }
@@ -78,7 +79,7 @@ public sealed class NewCopilotProviderCmdlet : PSCmdlet
             BearerToken = BearerToken,
             BearerTokenProvider = bearerTokenProvider,
             Azure = Azure,
-            Headers = Headers,
+            Headers = BuildHeaders(Headers),
             ModelId = ModelId,
             WireModel = WireModel,
             MaxPromptTokens = MaxPromptTokens,
@@ -98,6 +99,27 @@ public sealed class NewCopilotProviderCmdlet : PSCmdlet
                 ex, "InvalidProviderConfig", ErrorCategory.InvalidArgument, null));
         }
     }
+
+    internal static Dictionary<string, string>? BuildHeaders(IDictionary? headers)
+    {
+        if (headers is null)
+            return null;
+
+        var result = new Dictionary<string, string>();
+        foreach (DictionaryEntry entry in headers)
+        {
+            var key = McpServerHelper.Unwrap(entry.Key)?.ToString();
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                throw new ArgumentException(
+                    "Provider header names must be non-empty strings.");
+            }
+
+            result[key] = McpServerHelper.Unwrap(entry.Value)?.ToString() ?? string.Empty;
+        }
+
+        return result;
+    }
 }
 
 [Cmdlet(
@@ -107,7 +129,7 @@ public sealed class NewCopilotProviderCmdlet : PSCmdlet
 [OutputType(typeof(NamedProviderConfig))]
 public sealed class NewCopilotNamedProviderCmdlet : PSCmdlet
 {
-    [Parameter]
+    [Parameter(Mandatory = true, Position = 0)]
     public string Name { get; set; } = string.Empty;
 
     [Parameter]
@@ -116,7 +138,7 @@ public sealed class NewCopilotNamedProviderCmdlet : PSCmdlet
     [Parameter]
     public string? WireApi { get; set; }
 
-    [Parameter]
+    [Parameter(Mandatory = true, Position = 1)]
     public string BaseUrl { get; set; } = string.Empty;
 
     [Parameter]
@@ -135,7 +157,7 @@ public sealed class NewCopilotNamedProviderCmdlet : PSCmdlet
     public AzureOptions? Azure { get; set; }
 
     [Parameter]
-    public IDictionary<string, string>? Headers { get; set; }
+    public IDictionary? Headers { get; set; }
 
     internal NamedProviderConfig BuildProvider(PSLanguageMode languageMode)
     {
@@ -162,7 +184,7 @@ public sealed class NewCopilotNamedProviderCmdlet : PSCmdlet
             BearerToken = BearerToken,
             BearerTokenProvider = bearerTokenProvider,
             Azure = Azure,
-            Headers = Headers
+            Headers = NewCopilotProviderCmdlet.BuildHeaders(Headers)
         };
     }
 

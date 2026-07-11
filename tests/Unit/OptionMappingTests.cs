@@ -1,6 +1,7 @@
 #pragma warning disable GHCP001 // asserting experimental SDK options (EnableCitations)
 using System.Collections;
 using System.Management.Automation;
+using System.Management.Automation.Runspaces;
 using GitHub.Copilot;
 using Xunit;
 
@@ -209,6 +210,31 @@ public class OptionMappingTests
         Assert.Same(infiniteSessions, config.InfiniteSessions);
     }
 
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    public void CustomAgentsLocalOnly_PreservesOmittedAndExplicitBooleanValues(
+        bool? parameterValue,
+        bool? expected)
+    {
+        var state = InitialSessionState.CreateDefault2();
+        state.Commands.Add(new SessionStateCmdletEntry(
+            "Test-CopilotSessionConfig",
+            typeof(TestCopilotSessionConfigCmdlet),
+            null));
+        using var ps = PowerShell.Create(state);
+        ps.AddCommand("Test-CopilotSessionConfig");
+        if (parameterValue is not null)
+            ps.AddParameter("CustomAgentsLocalOnly", parameterValue.Value);
+
+        var output = ps.Invoke();
+
+        Assert.False(ps.HadErrors, string.Join("; ", ps.Streams.Error));
+        var config = Assert.IsType<SessionConfig>(Assert.Single(output).BaseObject);
+        Assert.Equal(expected, config.CustomAgentsLocalOnly);
+    }
+
     [Fact]
     public void ApplyCommonOptions_RejectsBothInfiniteSessionParameters()
     {
@@ -223,6 +249,17 @@ public class OptionMappingTests
 
         Assert.Contains("-InfiniteSessions", error.Message);
         Assert.Contains("-InfiniteSessionConfig", error.Message);
+    }
+
+    [Cmdlet(VerbsDiagnostic.Test, "CopilotSessionConfig")]
+    public sealed class TestCopilotSessionConfigCmdlet : SessionConfigCmdletBase
+    {
+        protected override void EndProcessing()
+        {
+            var config = new SessionConfig();
+            ApplyCommonOptions(config);
+            WriteObject(config);
+        }
     }
 
     [Fact]

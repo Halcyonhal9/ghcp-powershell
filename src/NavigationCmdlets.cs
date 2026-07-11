@@ -64,7 +64,7 @@ public sealed class RegisterCopilotSessionLifecycleEventCmdlet : PSCmdlet
     [Parameter(Mandatory = true, Position = 0, ParameterSetName = "ScriptBlock")]
     public ScriptBlock? Action { get; set; }
 
-    [Parameter(Mandatory = true, ParameterSetName = "Delegate")]
+    [Parameter(Mandatory = true, Position = 0, ParameterSetName = "Delegate")]
     public Action<SessionLifecycleEvent>? ActionDelegate { get; set; }
 
     protected override void BeginProcessing()

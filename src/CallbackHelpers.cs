@@ -7,14 +7,22 @@ namespace CopilotCmdlets;
 internal sealed class PowerShellCallbackRunner
 {
     private readonly string scriptText;
-    private readonly PSLanguageMode languageMode;
+    private readonly InitialSessionState initialSessionState;
 
     internal PowerShellCallbackRunner(ScriptBlock scriptBlock, PSLanguageMode languageMode)
+        : this(scriptBlock, CaptureInitialSessionState(languageMode))
+    {
+    }
+
+    private PowerShellCallbackRunner(
+        ScriptBlock scriptBlock,
+        InitialSessionState initialSessionState)
     {
         ArgumentNullException.ThrowIfNull(scriptBlock);
+        ArgumentNullException.ThrowIfNull(initialSessionState);
 
         scriptText = scriptBlock.ToString();
-        this.languageMode = languageMode;
+        this.initialSessionState = initialSessionState.Clone();
     }
 
     internal async Task<T> InvokeRequiredAsync<T>(params object?[] arguments)
@@ -82,10 +90,7 @@ internal sealed class PowerShellCallbackRunner
         bool formatOutput,
         CancellationToken cancellationToken)
     {
-        var initialSessionState = InitialSessionState.CreateDefault2();
-        initialSessionState.LanguageMode = languageMode;
-
-        using var runspace = RunspaceFactory.CreateRunspace(initialSessionState);
+        using var runspace = RunspaceFactory.CreateRunspace(initialSessionState.Clone());
         runspace.Open();
 
         using var ps = PowerShell.Create();
@@ -122,6 +127,27 @@ internal sealed class PowerShellCallbackRunner
         }
 
         return output;
+    }
+
+    private static InitialSessionState CaptureInitialSessionState(
+        PSLanguageMode languageMode)
+    {
+        InitialSessionState state;
+        var currentRunspace = Runspace.DefaultRunspace;
+        if (currentRunspace is null)
+        {
+            state = InitialSessionState.CreateDefault2();
+        }
+        else
+        {
+            var currentState = currentRunspace.InitialSessionState
+                ?? throw new InvalidOperationException(
+                    "The current PowerShell runspace does not expose its initial session state.");
+            state = currentState.Clone();
+        }
+
+        state.LanguageMode = languageMode;
+        return state;
     }
 
     private static object? GetSingleResult(PSDataCollection<PSObject> output, bool allowNull)

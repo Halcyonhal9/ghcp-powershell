@@ -26,7 +26,8 @@
 - **Unit tests** (`tests/Unit/`): Mock SDK types, no network or CLI required. Tagged `[Trait("Category", "Unit")]`.
 - **End-to-end tests** (`tests/EndToEnd/`): Real SDK against a running Copilot CLI. Tagged `[Trait("Category", "EndToEnd")]`. Require `GITHUB_TOKEN` env var.
 - Run unit tests: `dotnet test tests/CopilotCmdlets.Tests.csproj --filter "Category=Unit"`
-- Run e2e tests: `dotnet test tests/CopilotCmdlets.Tests.csproj --filter "Category=EndToEnd"`
+- Run standard e2e tests: `dotnet test tests/CopilotCmdlets.Tests.csproj --filter "Category=EndToEnd&Mode!=Manual"`
+- Run gated manual e2e tests: `dotnet test tests/CopilotCmdlets.Tests.csproj --filter "Category=EndToEnd&Mode=Manual"`
 - Run all tests: `dotnet test tests/CopilotCmdlets.Tests.csproj`
 
 ## Build

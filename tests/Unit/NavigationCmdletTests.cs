@@ -76,6 +76,7 @@ public class NavigationCmdletTests : IDisposable
         Assert.Equal(typeof(Action<SessionLifecycleEvent>), actionDelegate.PropertyType);
         Assert.NotNull(delegateParameter);
         Assert.True(delegateParameter.Mandatory);
+        Assert.Equal(0, delegateParameter.Position);
         Assert.Equal("Delegate", delegateParameter.ParameterSetName);
     }
 

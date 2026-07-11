@@ -52,6 +52,15 @@ public class ToolCmdletTests
     }
 
     [Fact]
+    public void ScriptBlockToolFunction_PreservesOriginalPublicConstructor()
+    {
+        var constructor = typeof(ScriptBlockToolFunction).GetConstructor(
+            [typeof(string), typeof(string), typeof(ScriptBlock), typeof(bool)]);
+
+        Assert.NotNull(constructor);
+    }
+
+    [Fact]
     public void ScriptBlockToolFunction_SkipPermissionSetsAdditionalProperty()
     {
         var tool = new ScriptBlockToolFunction("t", "d", ScriptBlock.Create("1"), skipPermission: true);
@@ -234,6 +243,7 @@ public class ToolCmdletTests
             "restricted",
             "Preserves language mode",
             ScriptBlock.Create("[System.IO.File]::Exists('.')"),
+            skipPermission: false,
             languageMode: PSLanguageMode.ConstrainedLanguage);
 
         var error = await Assert.ThrowsAnyAsync<Exception>(

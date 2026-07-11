@@ -67,8 +67,22 @@ public sealed class ScriptBlockToolFunction : AIFunction
         string name,
         string description,
         ScriptBlock scriptBlock,
-        bool skipPermission = false,
-        PSLanguageMode languageMode = PSLanguageMode.FullLanguage)
+        bool skipPermission = false)
+        : this(
+            name,
+            description,
+            scriptBlock,
+            skipPermission,
+            PSLanguageMode.FullLanguage)
+    {
+    }
+
+    public ScriptBlockToolFunction(
+        string name,
+        string description,
+        ScriptBlock scriptBlock,
+        bool skipPermission,
+        PSLanguageMode languageMode)
     {
         ArgumentException.ThrowIfNullOrEmpty(name);
         ArgumentNullException.ThrowIfNull(description);

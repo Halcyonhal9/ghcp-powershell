@@ -13,6 +13,7 @@ namespace CopilotCmdlets;
 public abstract class SessionConfigCmdletBase : PSCmdlet
 {
     private PSLanguageMode callbackLanguageMode = PSLanguageMode.FullLanguage;
+    private bool? customAgentsLocalOnly;
 
     [Parameter]
     public CopilotClient? Client { get; set; }
@@ -150,6 +151,10 @@ public abstract class SessionConfigCmdletBase : PSCmdlet
     protected override void BeginProcessing()
     {
         callbackLanguageMode = SessionState.LanguageMode;
+        customAgentsLocalOnly =
+            MyInvocation.BoundParameters.ContainsKey(nameof(CustomAgentsLocalOnly))
+                ? CustomAgentsLocalOnly.IsPresent
+                : null;
     }
 
     internal void ApplyCommonOptions(SessionConfigBase config)
@@ -181,7 +186,10 @@ public abstract class SessionConfigCmdletBase : PSCmdlet
         if (Agent is not null) config.Agent = Agent;
         if (CustomAgents is not null) config.CustomAgents = new List<CustomAgentConfig>(CustomAgents);
         if (DefaultAgent is not null) config.DefaultAgent = DefaultAgent;
-        if (CustomAgentsLocalOnly) config.CustomAgentsLocalOnly = true;
+        if (customAgentsLocalOnly is not null)
+            config.CustomAgentsLocalOnly = customAgentsLocalOnly;
+        else if (CustomAgentsLocalOnly)
+            config.CustomAgentsLocalOnly = true;
         if (SkillDirectories is not null) config.SkillDirectories = new List<string>(SkillDirectories);
         if (DisabledSkills is not null) config.DisabledSkills = new List<string>(DisabledSkills);
         if (EnableCitations) config.EnableCitations = true;
