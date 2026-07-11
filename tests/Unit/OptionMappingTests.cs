@@ -163,24 +163,32 @@ public class OptionMappingTests
         Assert.Null(options.Environment);
     }
 
-    [Fact]
-    public void BuildOptions_NoCliAnywhere_ThrowsWithModuleGuidance()
+    /// <summary>Runs an action with COPILOT_CLI_PATH set to the given value, restoring afterwards.</summary>
+    private static void WithCliPathEnv(string? value, Action action)
     {
         var original = System.Environment.GetEnvironmentVariable("COPILOT_CLI_PATH");
         try
         {
-            System.Environment.SetEnvironmentVariable("COPILOT_CLI_PATH", null);
-
-            var ex = Assert.Throws<FileNotFoundException>(
-                () => new NewCopilotClientCmdlet().BuildOptions(() => null));
-
-            Assert.Contains("-CliPath", ex.Message);
-            Assert.Contains("github.com/Halcyonhal9/ghcp-powershell/releases", ex.Message);
+            System.Environment.SetEnvironmentVariable("COPILOT_CLI_PATH", value);
+            action();
         }
         finally
         {
             System.Environment.SetEnvironmentVariable("COPILOT_CLI_PATH", original);
         }
+    }
+
+    [Fact]
+    public void BuildOptions_NoCliAnywhere_ThrowsWithModuleGuidance()
+    {
+        WithCliPathEnv(null, () =>
+        {
+            var ex = Assert.Throws<FileNotFoundException>(
+                () => new NewCopilotClientCmdlet().BuildOptions(() => null));
+
+            Assert.Contains("-CliPath", ex.Message);
+            Assert.Contains("github.com/Halcyonhal9/ghcp-powershell/releases", ex.Message);
+        });
     }
 
     [Fact]
@@ -201,19 +209,12 @@ public class OptionMappingTests
     [Fact]
     public void BuildOptions_ProcessEnvCliPathOverride_SkipsThrow()
     {
-        var original = System.Environment.GetEnvironmentVariable("COPILOT_CLI_PATH");
-        try
+        WithCliPathEnv("/from/process/env", () =>
         {
-            System.Environment.SetEnvironmentVariable("COPILOT_CLI_PATH", "/from/process/env");
-
             var options = new NewCopilotClientCmdlet().BuildOptions(() => null);
 
             Assert.Null(options.Connection);
-        }
-        finally
-        {
-            System.Environment.SetEnvironmentVariable("COPILOT_CLI_PATH", original);
-        }
+        });
     }
 
     [Fact]

@@ -314,7 +314,12 @@ public sealed class ConnectCopilotCmdlet : PSCmdlet
 
     protected override void EndProcessing()
     {
-        var cli = CliPath ?? ModuleState.ResolveBundledCliPath();
+        // Same resolution precedence the SDK uses for its own spawn:
+        // explicit path > COPILOT_CLI_PATH env var > bundled CLI.
+        var envCliPath = System.Environment.GetEnvironmentVariable("COPILOT_CLI_PATH");
+        var cli = CliPath
+            ?? (string.IsNullOrEmpty(envCliPath) ? null : envCliPath)
+            ?? ModuleState.ResolveBundledCliPath();
         if (cli is null)
         {
             ThrowTerminatingError(new ErrorRecord(
