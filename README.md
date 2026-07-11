@@ -140,8 +140,8 @@ Stop-CopilotClient
 
 | Cmdlet | Purpose | Common parameters |
 | --- | --- | --- |
-| `New-CopilotSession` | Creates a new Copilot session and stores it as the module default. | Common SDK session options plus create-only `-SessionId` and `-Cloud` |
-| `Resume-CopilotSession` | Resumes an existing session by ID and stores it as the module default. | `-SessionId`, `-ContinuePendingWork`, plus the same configuration parameters as `New-CopilotSession` |
+| `New-CopilotSession` | Creates a new Copilot session and stores it as the module default. | Shared session configuration parameters below, plus create-only `-SessionId` and `-Cloud` |
+| `Resume-CopilotSession` | Resumes an existing session by ID and stores it as the module default. | Shared session configuration parameters below, plus `-SessionId` and `-ContinuePendingWork` |
 | `Get-CopilotSession` | Lists sessions or returns metadata for one session. | `-SessionId`, `-Client` |
 | `Close-CopilotSession` | Closes a session without deleting its saved state. | `-Session` |
 | `Remove-CopilotSession` | Permanently deletes a saved session. | `-SessionId`, `-Client`, `-WhatIf`, `-Confirm` |
@@ -151,6 +151,21 @@ Stop-CopilotClient
 | `New-CopilotNamedProvider` | Builds a named BYOK provider for provider/model registries. | `-Name`, `-BaseUrl`, and SDK `NamedProviderConfig` properties |
 | `New-CopilotSectionOverride` | Builds an SDK system-message section override. | `-Action`, `-Content` |
 | `New-CopilotToolSet` | Builds source-qualified SDK tool filters. | `-BuiltIn`, `-Custom`, `-Mcp`, `-Isolated` |
+
+The shared `New-CopilotSession` and `Resume-CopilotSession` configuration
+parameters are `-Client`, `-Model`, `-SystemMessage`, `-SystemMessageMode`,
+`-SystemMessageSections`, `-ReasoningEffort`, `-AutoApprove`,
+`-InfiniteSessions`, `-InfiniteSessionConfig`, `-LargeOutput`, `-Memory`,
+`-WorkingDirectory`, `-AvailableTools`, `-ExcludedTools`,
+`-EnableConfigDiscovery`, `-Agent`, `-CustomAgents`, `-DefaultAgent`,
+`-CustomAgentsLocalOnly`, `-SkillDirectories`, `-DisabledSkills`,
+`-EnableCitations`, `-ExcludedBuiltInAgents`, `-MaxAiCredits`, `-McpServers`,
+`-McpOAuthTokenStorage`, `-OnMcpAuthRequest`, `-OnMcpAuthRequestDelegate`,
+`-Provider`, `-Providers`, `-ProviderModels`, `-Hooks`,
+`-OnElicitationRequest`, `-OnElicitationRequestDelegate`,
+`-OnExitPlanModeRequest`, `-OnExitPlanModeRequestDelegate`,
+`-OnAutoModeSwitchRequest`, `-OnAutoModeSwitchRequestDelegate`,
+`-RemoteSession`, `-Commands`, and `-Tool`.
 
 ### Messaging
 

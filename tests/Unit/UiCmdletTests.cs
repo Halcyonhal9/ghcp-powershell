@@ -124,6 +124,8 @@ public class UiCmdletTests : IDisposable
     public async Task SessionUiExecution_ForwardsArgumentsAndReturnsSdkResults()
     {
         var ui = Substitute.For<ISessionUiApi>();
+        using var cancellation = new CancellationTokenSource();
+        var cancellationToken = cancellation.Token;
         var options = new UiInputOptions { Title = "Input" };
         var choices = new[] { "alpha", "beta" };
         var parameters = new ElicitationParams
@@ -133,24 +135,27 @@ public class UiCmdletTests : IDisposable
         };
         var elicitation = new ElicitationResult();
 
-        ui.ConfirmAsync("confirm", CancellationToken.None)
+        ui.ConfirmAsync("confirm", cancellationToken)
             .Returns(Task.FromResult(true));
-        ui.SelectAsync("select", choices, CancellationToken.None)
+        ui.SelectAsync("select", choices, cancellationToken)
             .Returns(Task.FromResult<string?>("beta"));
-        ui.InputAsync("input", options, CancellationToken.None)
+        ui.InputAsync("input", options, cancellationToken)
             .Returns(Task.FromResult<string?>("typed"));
-        ui.ElicitAsync(parameters, CancellationToken.None)
+        ui.ElicitAsync(parameters, cancellationToken)
             .Returns(Task.FromResult(elicitation));
 
-        Assert.True(await SessionUiExecution.ConfirmAsync(ui, "confirm"));
-        Assert.Equal("beta", await SessionUiExecution.SelectAsync(ui, "select", choices));
-        Assert.Equal("typed", await SessionUiExecution.InputAsync(ui, "input", options));
-        Assert.Same(elicitation, await SessionUiExecution.ElicitAsync(ui, parameters));
+        Assert.True(await SessionUiExecution.ConfirmAsync(ui, "confirm", cancellationToken));
+        Assert.Equal("beta", await SessionUiExecution.SelectAsync(
+            ui, "select", choices, cancellationToken));
+        Assert.Equal("typed", await SessionUiExecution.InputAsync(
+            ui, "input", options, cancellationToken));
+        Assert.Same(elicitation, await SessionUiExecution.ElicitAsync(
+            ui, parameters, cancellationToken));
 
-        await ui.Received(1).ConfirmAsync("confirm", CancellationToken.None);
-        await ui.Received(1).SelectAsync("select", choices, CancellationToken.None);
-        await ui.Received(1).InputAsync("input", options, CancellationToken.None);
-        await ui.Received(1).ElicitAsync(parameters, CancellationToken.None);
+        await ui.Received(1).ConfirmAsync("confirm", cancellationToken);
+        await ui.Received(1).SelectAsync("select", choices, cancellationToken);
+        await ui.Received(1).InputAsync("input", options, cancellationToken);
+        await ui.Received(1).ElicitAsync(parameters, cancellationToken);
     }
 
     [Fact]
@@ -164,8 +169,10 @@ public class UiCmdletTests : IDisposable
         ui.InputAsync("input", null, CancellationToken.None)
             .Returns(Task.FromResult<string?>(null));
 
-        Assert.Null(await SessionUiExecution.SelectAsync(ui, "select", choices));
-        Assert.Null(await SessionUiExecution.InputAsync(ui, "input", null));
+        Assert.Null(await SessionUiExecution.SelectAsync(
+            ui, "select", choices, CancellationToken.None));
+        Assert.Null(await SessionUiExecution.InputAsync(
+            ui, "input", null, CancellationToken.None));
     }
 
     [Fact]
@@ -193,13 +200,43 @@ public class UiCmdletTests : IDisposable
             .Returns(Task.FromException<ElicitationResult>(requestError));
 
         Assert.Same(confirmError, await Assert.ThrowsAsync<InvalidOperationException>(
-            () => SessionUiExecution.ConfirmAsync(ui, "confirm")));
+            () => SessionUiExecution.ConfirmAsync(ui, "confirm", CancellationToken.None)));
         Assert.Same(selectError, await Assert.ThrowsAsync<InvalidOperationException>(
-            () => SessionUiExecution.SelectAsync(ui, "select", choices)));
+            () => SessionUiExecution.SelectAsync(
+                ui, "select", choices, CancellationToken.None)));
         Assert.Same(inputError, await Assert.ThrowsAsync<InvalidOperationException>(
-            () => SessionUiExecution.InputAsync(ui, "input", null)));
+            () => SessionUiExecution.InputAsync(
+                ui, "input", null, CancellationToken.None)));
         Assert.Same(requestError, await Assert.ThrowsAsync<InvalidOperationException>(
-            () => SessionUiExecution.ElicitAsync(ui, parameters)));
+            () => SessionUiExecution.ElicitAsync(
+                ui, parameters, CancellationToken.None)));
+    }
+
+    [Theory]
+    [InlineData(typeof(ConfirmCopilotElicitationCmdlet))]
+    [InlineData(typeof(SelectCopilotElicitationCmdlet))]
+    [InlineData(typeof(ReadCopilotElicitationInputCmdlet))]
+    [InlineData(typeof(RequestCopilotElicitationCmdlet))]
+    public void UiCmdlets_StopProcessingCancelsPendingOperation(Type cmdletType)
+    {
+        var cmdlet = Assert.IsAssignableFrom<PSCmdlet>(Activator.CreateInstance(cmdletType));
+        using var cancellation = new CancellationTokenSource();
+        var field = cmdletType.GetField(
+            "cancellationSource",
+            System.Reflection.BindingFlags.Instance |
+            System.Reflection.BindingFlags.NonPublic);
+        var stopProcessing = cmdletType.GetMethod(
+            "StopProcessing",
+            System.Reflection.BindingFlags.Instance |
+            System.Reflection.BindingFlags.NonPublic);
+
+        Assert.NotNull(field);
+        Assert.NotNull(stopProcessing);
+        field.SetValue(cmdlet, cancellation);
+
+        stopProcessing.Invoke(cmdlet, null);
+
+        Assert.True(cancellation.IsCancellationRequested);
     }
 
     private static void AssertParameter<TCmdlet>(

@@ -180,26 +180,32 @@ public class ProviderAndOAuthTests : IAsyncLifetime
         string toolName,
         TimeSpan timeout)
     {
-        var deadline = DateTimeOffset.UtcNow + timeout;
+        using var cancellation = new CancellationTokenSource(timeout);
         Exception? lastError = null;
 
-        while (DateTimeOffset.UtcNow < deadline)
+        try
         {
-            try
+            while (true)
             {
-                var tools = await session.Rpc.Mcp.ListToolsAsync(serverName);
-                if (tools.Tools.Any(tool => tool.Name == toolName))
-                    return true;
-            }
-            catch (Exception ex)
-            {
-                lastError = ex;
-                await Task.Delay(200);
+                try
+                {
+                    var tools = await session.Rpc.Mcp.ListToolsAsync(serverName);
+                    if (tools.Tools.Any(tool => tool.Name == toolName))
+                        return true;
+                }
+                catch (Exception ex)
+                {
+                    lastError = ex;
+                }
+
+                await Task.Delay(200, cancellation.Token);
             }
         }
-
-        throw new TimeoutException(
-            $"MCP server '{serverName}' did not become ready within {timeout}.",
-            lastError);
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+            throw new TimeoutException(
+                $"MCP server '{serverName}' did not become ready within {timeout}.",
+                lastError);
+        }
     }
 }
