@@ -35,7 +35,7 @@ After installation, restart `pwsh` to load the module automatically, or run `Imp
 
 ### Other platforms or custom CLI builds
 
-The published module includes native Copilot CLI payloads for Windows x64 and macOS arm64. On another runtime, or if you want to use a custom CLI binary, pass `-CliPath` to `Connect-Copilot` and `New-CopilotClient`.
+The published module includes native Copilot CLI payloads for Windows x64 and macOS arm64. On another runtime, either build from source (the SDK build automatically bundles the Copilot CLI for the build host's platform) or pass `-CliPath` to `Connect-Copilot` and `New-CopilotClient` to use a custom CLI binary.
 
 ### Build from source
 
@@ -141,6 +141,8 @@ $result = Send-CopilotMessage -Prompt "Summarize this file" -Attachment ./README
 $job = Send-CopilotMessageAsync -Prompt "Generate a short checklist" -Tag checklist
 $job | Receive-CopilotAsyncResult -Timeout (New-TimeSpan -Minutes 10)
 ```
+
+Keep at most one in-flight async message per session: each handle completes when its session next goes idle, so two concurrent sends to the same session finish together at the first idle. For parallel work, create one session per concurrent message. When sending asynchronously, prefer `-AutoApprove` sessions — interactive permission prompts fire on a background thread and contend with the console prompt.
 
 ### Models
 
