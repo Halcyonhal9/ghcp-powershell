@@ -89,6 +89,7 @@ public class ClientCmdletTests
         Assert.NotNull(type.GetProperty("LogLevel"));
         Assert.NotNull(type.GetProperty("OtlpEndpoint"));
         Assert.NotNull(type.GetProperty("TelemetrySourceName"));
+        Assert.NotNull(type.GetProperty("EnableRemoteSessions"));
     }
 
     [Fact]

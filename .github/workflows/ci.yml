@@ -55,4 +55,4 @@ jobs:
       - name: End-to-end tests
         env:
           GITHUB_TOKEN: ${{ secrets.COPILOT_E2E_TOKEN }}
-        run: dotnet test tests/CopilotCmdlets.Tests.csproj --filter "Category=EndToEnd"
+        run: dotnet test tests/CopilotCmdlets.Tests.csproj --filter "Category=EndToEnd&Mode!=Manual"

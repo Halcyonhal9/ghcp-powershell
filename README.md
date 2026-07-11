@@ -50,6 +50,25 @@ Or use the convenience script, which builds the supported runtime packages:
 pwsh build.ps1
 ```
 
+### Local skills in worktrees
+
+Local agent skills and prompts are intentionally ignored by Git. Keep the
+canonical copies in the repository's primary checkout under `.github/skills`,
+`.github/prompts`, and `.claude/skills`.
+
+Fresh worktrees created through `copilot-tmux` automatically run the tracked
+`.tmuxapp/worktree-up` hook. It copies those ignored directories from the
+primary checkout without overwriting worktree-local files, and refuses to copy
+a path unless the worktree's committed `.gitignore` rules ignore it.
+
+To seed an existing linked worktree manually:
+
+```bash
+./.tmuxapp/worktree-up "$PWD"
+```
+
+Restart Copilot after seeding so the new session reloads the skill inventory.
+
 ## First-time authentication
 
 Use `Connect-Copilot` to launch the bundled GitHub Copilot CLI interactively. At the CLI prompt, run `/login` to authenticate, then `/exit` to return to PowerShell.
@@ -107,29 +126,54 @@ Stop-CopilotClient
 | Cmdlet | Purpose | Common parameters |
 | --- | --- | --- |
 | `Connect-Copilot` | Launches the Copilot CLI for interactive commands such as `/login`. | `-CliPath`, `-ArgumentList`, `-Force` |
-| `New-CopilotClient` | Starts a Copilot SDK client and stores it as the module default. | `-GitHubToken`, `-CliPath`, `-CliUrl`, `-LogLevel`, `-OtlpEndpoint`, `-TelemetrySourceName`, `-WorkingDirectory`, `-Environment`, `-UseLoggedInUser` |
+| `New-CopilotClient` | Starts a Copilot SDK client and stores it as the module default. | `-GitHubToken`, `-CliPath`, `-CliUrl`, `-LogLevel`, `-OtlpEndpoint`, `-TelemetrySourceName`, `-WorkingDirectory`, `-Environment`, `-UseLoggedInUser`, `-EnableRemoteSessions` |
 | `Test-CopilotConnection` | Pings the Copilot CLI server through the current or supplied client. | `-Client`, `-Message` |
 | `Get-CopilotStatus` | Returns the Copilot CLI version and protocol version. | `-Client` |
 | `Get-CopilotAuthStatus` | Returns authentication state, auth type, and login. | `-Client` |
+| `Register-CopilotSessionLifecycleEvent` | Subscribes to SDK session lifecycle events and returns the disposable subscription. | `-Action` or `-ActionDelegate`, `-Client` |
+| `Get-CopilotLastSessionId` | Returns the last persisted session ID. | `-Client` |
+| `Get-CopilotForegroundSessionId` | Returns the foreground TUI session ID, or no output when none exists. | `-Client` |
+| `Set-CopilotForegroundSessionId` | Sets the foreground TUI session ID. Requires TUI+server mode. | `-SessionId`, `-Client` |
 | `Stop-CopilotClient` | Stops and disposes the current or supplied client. | `-Client`, `-Force`, `-WhatIf`, `-Confirm` |
 
 ### Sessions
 
 | Cmdlet | Purpose | Common parameters |
 | --- | --- | --- |
-| `New-CopilotSession` | Creates a new Copilot session and stores it as the module default. | `-Client`, `-SessionId`, `-Model`, `-SystemMessage`, `-SystemMessageMode`, `-SystemMessageSections`, `-ReasoningEffort`, `-AutoApprove`, `-InfiniteSessions`, `-WorkingDirectory`, `-AvailableTools`, `-ExcludedTools`, `-EnableConfigDiscovery`, `-Agent`, `-SkillDirectories`, `-DisabledSkills`, `-EnableCitations`, `-ExcludedBuiltInAgents`, `-MaxAiCredits`, `-McpServers`, `-Tool` |
-| `Resume-CopilotSession` | Resumes an existing session by ID and stores it as the module default. | `-SessionId`, `-ContinuePendingWork`, plus the same configuration parameters as `New-CopilotSession` |
+| `New-CopilotSession` | Creates a new Copilot session and stores it as the module default. | Shared session configuration parameters below, plus create-only `-SessionId` and `-Cloud` |
+| `Resume-CopilotSession` | Resumes an existing session by ID and stores it as the module default. | Shared session configuration parameters below, plus `-SessionId` and `-ContinuePendingWork` |
 | `Get-CopilotSession` | Lists sessions or returns metadata for one session. | `-SessionId`, `-Client` |
 | `Close-CopilotSession` | Closes a session without deleting its saved state. | `-Session` |
 | `Remove-CopilotSession` | Permanently deletes a saved session. | `-SessionId`, `-Client`, `-WhatIf`, `-Confirm` |
+| `New-CopilotSessionHooks` | Builds an SDK `SessionHooks` object from ScriptBlocks or raw delegates. | All eight `On*` hook callbacks |
+| `New-CopilotCommand` | Builds an SDK custom slash-command definition. | `-Name`, `-ScriptBlock` or `-HandlerDelegate`, `-Description` |
+| `New-CopilotProvider` | Builds a singular BYOK provider, including a bearer-token callback. | `-BaseUrl` and SDK `ProviderConfig` properties |
+| `New-CopilotNamedProvider` | Builds a named BYOK provider for provider/model registries. | `-Name`, `-BaseUrl`, and SDK `NamedProviderConfig` properties |
+| `New-CopilotSectionOverride` | Builds an SDK system-message section override. | `-Action`, `-Content` |
+| `New-CopilotToolSet` | Builds source-qualified SDK tool filters. | `-BuiltIn`, `-Custom`, `-Mcp`, `-Isolated` |
+
+The shared `New-CopilotSession` and `Resume-CopilotSession` configuration
+parameters are `-Client`, `-Model`, `-SystemMessage`, `-SystemMessageMode`,
+`-SystemMessageSections`, `-ReasoningEffort`, `-AutoApprove`,
+`-InfiniteSessions`, `-InfiniteSessionConfig`, `-LargeOutput`, `-Memory`,
+`-WorkingDirectory`, `-AvailableTools`, `-ExcludedTools`,
+`-EnableConfigDiscovery`, `-Agent`, `-CustomAgents`, `-DefaultAgent`,
+`-CustomAgentsLocalOnly`, `-SkillDirectories`, `-DisabledSkills`,
+`-EnableCitations`, `-ExcludedBuiltInAgents`, `-MaxAiCredits`, `-McpServers`,
+`-McpOAuthTokenStorage`, `-OnMcpAuthRequest`, `-OnMcpAuthRequestDelegate`,
+`-Provider`, `-Providers`, `-ProviderModels`, `-Hooks`,
+`-OnElicitationRequest`, `-OnElicitationRequestDelegate`,
+`-OnExitPlanModeRequest`, `-OnExitPlanModeRequestDelegate`,
+`-OnAutoModeSwitchRequest`, `-OnAutoModeSwitchRequestDelegate`,
+`-RemoteSession`, `-Commands`, and `-Tool`.
 
 ### Messaging
 
 | Cmdlet | Purpose | Common parameters |
 | --- | --- | --- |
-| `Send-CopilotMessage` | Sends a prompt, streams assistant output, and returns a `CopilotMessageResult`. | `-Prompt`, `-Session`, `-Attachment`, `-BlobData`, `-BlobMimeType`, `-Mode`, `-DisplayPrompt`, `-Timeout` |
+| `Send-CopilotMessage` | Sends a prompt, streams assistant output, and returns a `CopilotMessageResult`. | `-Prompt`, `-Session`, `-Attachment`, `-BlobData`, `-BlobMimeType`, `-Mode`, `-DisplayPrompt`, `-AgentMode`, `-Timeout` |
 | `Get-CopilotMessage` | Retrieves conversation events from the current or supplied session. | `-Session` |
-| `Send-CopilotMessageAsync` | Sends a prompt and immediately returns a `CopilotAsyncResult` handle. | `-Prompt`, `-Session`, `-Tag`, `-Attachment`, `-BlobData`, `-BlobMimeType`, `-Mode`, `-DisplayPrompt` |
+| `Send-CopilotMessageAsync` | Sends a prompt and immediately returns a `CopilotAsyncResult` handle. | `-Prompt`, `-Session`, `-Tag`, `-Attachment`, `-BlobData`, `-BlobMimeType`, `-Mode`, `-DisplayPrompt`, `-AgentMode` |
 | `Receive-CopilotAsyncResult` | Waits for an async message handle and returns a `CopilotMessageResult`. | `-Result`, `-Timeout`, `-DisposeSession` |
 | `Stop-CopilotMessage` | Aborts the session's in-flight processing. | `-Session` |
 
@@ -143,6 +187,8 @@ $job | Receive-CopilotAsyncResult -Timeout (New-TimeSpan -Minutes 10)
 ```
 
 Keep at most one in-flight async message per session: each handle completes when its session next goes idle, so two concurrent sends to the same session finish together at the first idle. For parallel work, create one session per concurrent message. When sending asynchronously, prefer `-AutoApprove` sessions — interactive permission prompts fire on a background thread and contend with the console prompt.
+
+`-AgentMode` accepts the SDK values `Interactive`, `Plan`, `Autopilot`, and `Shell`.
 
 ### Models
 
@@ -177,9 +223,18 @@ New-CopilotSession -AutoApprove -Tool $weather
 Send-CopilotMessage "What's the weather in Oslo?"
 ```
 
+`New-CopilotToolSet` delegates qualification to the SDK:
+
+```powershell
+$tools = New-CopilotToolSet -BuiltIn @('ask_user') -Custom @('get_weather') -Mcp @('*')
+New-CopilotSession -AvailableTools $tools
+```
+
+Use `-Isolated` to add the SDK's curated isolated built-in tool set.
+
 ### MCP servers
 
-Sessions can attach Model Context Protocol servers with `-McpServers`. Each key is a server name; each value is a hashtable with either `Command` (stdio server: optional `Args`, `Env`, `WorkingDirectory`) or `Url` (HTTP server: optional `Headers`), plus optional `Tools` and `Timeout`.
+Sessions can attach Model Context Protocol servers with `-McpServers`. Each key is a server name; each value can be a typed SDK `McpServerConfig` or a hashtable with either `Command` (stdio server: optional `Args`, `Env`, `WorkingDirectory`) or `Url` (HTTP server: optional `Headers`, `OauthClientId`, `OauthPublicClient`, `OauthGrantType`), plus optional `Tools` and `Timeout`.
 
 ```powershell
 New-CopilotSession -AutoApprove -McpServers @{
@@ -190,6 +245,145 @@ New-CopilotSession -AutoApprove -McpServers @{
     }
 }
 ```
+
+For host-provided OAuth tokens, use `-OnMcpAuthRequest` and optionally
+`-McpOAuthTokenStorage`:
+
+```powershell
+$session = New-CopilotSession -McpOAuthTokenStorage InMemory -OnMcpAuthRequest {
+    param($context)
+    [GitHub.Copilot.McpAuthResult]::FromToken(
+        [GitHub.Copilot.McpAuthToken]@{
+            AccessToken = $env:MCP_TEST_TOKEN
+            TokenType = 'Bearer'
+        })
+} -McpServers @{
+    protected = @{
+        Url = 'https://mcp.example.com/mcp'
+        Tools = '*'
+    }
+}
+```
+
+## Hooks, commands, and callback behavior
+
+```powershell
+$hooks = New-CopilotSessionHooks `
+    -OnPreToolUse {
+        param($input, $invocation)
+        [GitHub.Copilot.PreToolUseHookOutput]@{
+            PermissionDecision = 'allow'
+        }
+    } `
+    -OnSessionEnd {
+        param($input, $invocation)
+        [GitHub.Copilot.SessionEndHookOutput]@{
+            SessionSummary = 'Completed from PowerShell'
+        }
+    }
+
+$command = New-CopilotCommand deploy {
+    param($context)
+    [Console]::WriteLine("Deploying $($context.Args)")
+} -Description 'Runs the deployment workflow'
+
+New-CopilotSession -Hooks $hooks -Commands $command
+```
+
+ScriptBlock callbacks execute in a fresh runspace because the SDK invokes them
+from background RPC threads. They are self-contained: caller variables,
+functions, working directory, and host UI are not captured. The originating
+PowerShell language mode is preserved, including constrained language mode.
+Every ScriptBlock callback also has a raw typed-delegate escape hatch whose
+parameter name ends in `Delegate`.
+
+## Custom agents, providers, and session tuning
+
+```powershell
+$agent = [GitHub.Copilot.CustomAgentConfig]@{
+    Name = 'reviewer'
+    DisplayName = 'Reviewer'
+    Prompt = 'Review changes for correctness.'
+    Tools = @()
+}
+
+$provider = New-CopilotProvider `
+    -BaseUrl 'http://127.0.0.1:8080/v1' `
+    -Type openai `
+    -WireApi completions `
+    -ModelId local-model `
+    -BearerTokenProvider { param($args) $env:LOCAL_PROVIDER_TOKEN }
+
+$infinite = [GitHub.Copilot.InfiniteSessionConfig]@{
+    Enabled = $true
+    BackgroundCompactionThreshold = 0.8
+    BufferExhaustionThreshold = 0.95
+}
+
+New-CopilotSession `
+    -CustomAgents $agent `
+    -DefaultAgent ([GitHub.Copilot.DefaultAgentConfig]@{ ExcludedTools = @('builtin:bash') }) `
+    -CustomAgentsLocalOnly `
+    -Provider $provider `
+    -InfiniteSessionConfig $infinite `
+    -LargeOutput ([GitHub.Copilot.LargeToolOutputConfig]@{ Enabled = $true }) `
+    -Memory ([GitHub.Copilot.MemoryConfiguration]@{ Enabled = $false })
+```
+
+`-Providers` and `-ProviderModels` expose the experimental named-provider
+registry. `-InfiniteSessions` remains as a compatibility shortcut for
+`InfiniteSessionConfig.Enabled = $true`; do not combine it with
+`-InfiniteSessionConfig`.
+
+## Elicitation and Session UI
+
+Configure a host response handler when creating or resuming a session, then use
+the direct `Session.Ui` cmdlets:
+
+```powershell
+$session = New-CopilotSession -OnElicitationRequest {
+    param($context)
+    [GitHub.Copilot.ElicitationResult]@{
+        Action = [GitHub.Copilot.Rpc.UIElicitationResponseAction]::Accept
+        Content = @{ confirmed = $true; selection = 'beta'; value = 'typed' }
+    }
+}
+
+Confirm-CopilotElicitation 'Continue?' -Session $session
+Select-CopilotElicitation 'Choose one' -Option @('alpha', 'beta') -Session $session
+Read-CopilotElicitationInput 'Enter a value' -Session $session
+Request-CopilotElicitation -Session $session -Parameters $elicitationParams
+```
+
+## Lifecycle and foreground sessions
+
+```powershell
+$subscription = Register-CopilotSessionLifecycleEvent {
+    param($event)
+    "$($event.Type): $($event.SessionId)" | Write-Host
+}
+
+try {
+    Get-CopilotLastSessionId
+    Get-CopilotForegroundSessionId
+} finally {
+    $subscription.Dispose()
+}
+```
+
+Foreground get/set requires a Copilot CLI running in TUI+server mode. Headless
+clients return no foreground ID and reject `Set-CopilotForegroundSessionId`.
+
+## Remote and cloud sessions
+
+`New-CopilotClient -EnableRemoteSessions` enables the SDK's remote-session
+support. `New-CopilotSession` and `Resume-CopilotSession` accept
+`-RemoteSession off|export|on`; create also accepts a typed
+`CloudSessionOptions` through `-Cloud`.
+
+Remote export and cloud creation can upload session data or create remote
+compute. The corresponding E2E tests are tagged `Mode=Manual` and require
+explicit authorization environment variables.
 
 ## Default client and session behavior
 
@@ -205,12 +399,26 @@ Use explicit `-Client` and `-Session` parameters when you want to manage multipl
 # Unit tests (no network required)
 dotnet test tests/CopilotCmdlets.Tests.csproj --filter "Category=Unit"
 
-# End-to-end tests (requires GITHUB_TOKEN and a published module: dotnet publish src/CopilotCmdlets.csproj -c Release -o out)
-dotnet test tests/CopilotCmdlets.Tests.csproj --filter "Category=EndToEnd"
+# Standard end-to-end tests (requires GITHUB_TOKEN and a published module)
+dotnet publish src/CopilotCmdlets.csproj -c Release -o out
+dotnet test tests/CopilotCmdlets.Tests.csproj --filter "Category=EndToEnd&Mode!=Manual"
+
+# Explicitly gated tests for TUI, remote/cloud, rate-limit, and account-memory behavior
+dotnet test tests/CopilotCmdlets.Tests.csproj --filter "Category=EndToEnd&Mode=Manual"
 
 # All tests
 dotnet test tests/CopilotCmdlets.Tests.csproj
 ```
+
+Manual tests are skipped until their prerequisites are present:
+
+| Test | Required environment |
+| --- | --- |
+| Positive foreground session | `COPILOT_UI_SERVER_URL` |
+| Remote export and steering | `COPILOT_ALLOW_REMOTE_TESTS=true` |
+| Cloud session creation | `COPILOT_ALLOW_CLOUD_TESTS=true`, `COPILOT_CLOUD_TEST_OWNER`, `COPILOT_CLOUD_TEST_REPOSITORY`; optional `COPILOT_CLOUD_TEST_BRANCH` |
+| Auto-mode rate-limit switch | `COPILOT_AUTO_MODE_TEST_URL`, `COPILOT_AUTO_MODE_TEST_TOKEN` |
+| Persistent memory | `COPILOT_ALLOW_MEMORY_TESTS=true` |
 
 ## License
 

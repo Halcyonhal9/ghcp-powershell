@@ -1,5 +1,7 @@
+#pragma warning disable GHCP001 // experimental SDK members exposed by issue #28
 using System.Collections;
 using System.Management.Automation;
+using GitHub.Copilot;
 using Microsoft.Extensions.AI;
 using Xunit;
 
@@ -29,6 +31,27 @@ public class NewParameterTests
             ("AvailableTools", typeof(string[])),
             ("ExcludedTools", typeof(string[])),
             ("InfiniteSessions", typeof(SwitchParameter)),
+            ("InfiniteSessionConfig", typeof(InfiniteSessionConfig)),
+            ("LargeOutput", typeof(LargeToolOutputConfig)),
+            ("Memory", typeof(MemoryConfiguration)),
+            ("CustomAgents", typeof(CustomAgentConfig[])),
+            ("DefaultAgent", typeof(DefaultAgentConfig)),
+            ("CustomAgentsLocalOnly", typeof(SwitchParameter)),
+            ("McpOAuthTokenStorage", typeof(McpOAuthTokenStorageMode?)),
+            ("OnMcpAuthRequest", typeof(ScriptBlock)),
+            ("OnMcpAuthRequestDelegate", typeof(Func<McpAuthContext, Task<McpAuthResult>>)),
+            ("Provider", typeof(ProviderConfig)),
+            ("Providers", typeof(NamedProviderConfig[])),
+            ("ProviderModels", typeof(ProviderModelConfig[])),
+            ("Hooks", typeof(SessionHooks)),
+            ("OnElicitationRequest", typeof(ScriptBlock)),
+            ("OnElicitationRequestDelegate", typeof(Func<ElicitationContext, Task<ElicitationResult>>)),
+            ("OnExitPlanModeRequest", typeof(ScriptBlock)),
+            ("OnExitPlanModeRequestDelegate", typeof(Func<ExitPlanModeRequest, ExitPlanModeInvocation, Task<ExitPlanModeResult>>)),
+            ("OnAutoModeSwitchRequest", typeof(ScriptBlock)),
+            ("OnAutoModeSwitchRequestDelegate", typeof(Func<AutoModeSwitchRequest, AutoModeSwitchInvocation, Task<AutoModeSwitchResponse>>)),
+            ("RemoteSession", typeof(string)),
+            ("Commands", typeof(CommandDefinition[])),
         })
         {
             var prop = cmdletType.GetProperty(name);
@@ -46,10 +69,21 @@ public class NewParameterTests
         Assert.Equal(typeof(SwitchParameter), prop!.PropertyType);
     }
 
+    [Fact]
+    public void NewCopilotSession_HasCloudOption()
+    {
+        var prop = typeof(NewCopilotSessionCmdlet).GetProperty("Cloud");
+
+        Assert.NotNull(prop);
+        Assert.Equal(typeof(CloudSessionOptions), prop!.PropertyType);
+        Assert.Null(typeof(ResumeCopilotSessionCmdlet).GetProperty("Cloud"));
+    }
+
     [Theory]
     [InlineData("WorkingDirectory", typeof(string))]
     [InlineData("Environment", typeof(Hashtable))]
     [InlineData("UseLoggedInUser", typeof(SwitchParameter))]
+    [InlineData("EnableRemoteSessions", typeof(SwitchParameter))]
     public void NewCopilotClient_HasNewOptions(string name, Type type)
     {
         var prop = typeof(NewCopilotClientCmdlet).GetProperty(name);
@@ -61,7 +95,7 @@ public class NewParameterTests
     [Theory]
     [InlineData(typeof(SendCopilotMessageCmdlet))]
     [InlineData(typeof(SendCopilotMessageAsyncCmdlet))]
-    public void SendCmdlets_HaveModeAndDisplayPrompt(Type cmdletType)
+    public void SendCmdlets_HaveModeDisplayPromptAndAgentMode(Type cmdletType)
     {
         foreach (var name in new[] { "Mode", "DisplayPrompt" })
         {
@@ -75,6 +109,13 @@ public class NewParameterTests
         var completer = Assert.IsType<ArgumentCompleterAttribute>(
             Attribute.GetCustomAttribute(modeProp, typeof(ArgumentCompleterAttribute)));
         Assert.Equal(typeof(MessageModeCompleter), completer.Type);
+
+        var agentMode = cmdletType.GetProperty("AgentMode");
+        Assert.NotNull(agentMode);
+        Assert.Equal(typeof(AgentMode?), agentMode!.PropertyType);
+        var agentModeCompleter = Assert.IsType<ArgumentCompleterAttribute>(
+            Attribute.GetCustomAttribute(agentMode, typeof(ArgumentCompleterAttribute)));
+        Assert.Equal(typeof(AgentModeCompleter), agentModeCompleter.Type);
     }
 
     [Fact]
@@ -87,6 +128,28 @@ public class NewParameterTests
         Assert.Equal(2, results.Count);
         Assert.Contains(results, r => r.CompletionText == "enqueue");
         Assert.Contains(results, r => r.CompletionText == "immediate");
+    }
+
+    [Fact]
+    public void AgentModeCompleter_ReturnsSdkModes()
+    {
+        var completer = new AgentModeCompleter();
+        var results = completer.CompleteArgument(
+            "Send-CopilotMessage", "AgentMode", "", null!, new Hashtable()).ToList();
+
+        Assert.Equal(["Interactive", "Plan", "Autopilot", "Shell"],
+            results.Select(result => result.CompletionText));
+    }
+
+    [Fact]
+    public void RemoteSessionModeCompleter_ReturnsSdkModes()
+    {
+        var completer = new RemoteSessionModeCompleter();
+        var results = completer.CompleteArgument(
+            "New-CopilotSession", "RemoteSession", "", null!, new Hashtable()).ToList();
+
+        Assert.Equal(["off", "export", "on"],
+            results.Select(result => result.CompletionText));
     }
 
     [Fact]

@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+# tmuxapp worktree hook — seed local Copilot/Claude skills into a fresh worktree.
+#
+# The canonical local-only skill bundle lives in the repository's primary
+# checkout. The tmuxapp launcher runs this hook after creating a linked
+# worktree, with the worktree directory as both cwd and $1.
+set -uo pipefail
+
+worktree="${1:-$PWD}"
+cd "${worktree}" || exit 0
+
+commonDir="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" || {
+  echo "worktree-up: unable to resolve the shared git directory"
+  exit 0
+}
+
+if [[ "$(basename "${commonDir}")" == ".git" ]]; then
+  sourceRoot="$(dirname "${commonDir}")"
+else
+  sourceRoot="$(
+    git worktree list --porcelain 2>/dev/null \
+      | sed -n 's/^worktree //p' \
+      | head -n 1
+  )"
+fi
+
+[[ -n "${sourceRoot:-}" && -d "${sourceRoot}" ]] || {
+  echo "worktree-up: primary checkout not found"
+  exit 0
+}
+sourceRoot="$(cd "${sourceRoot}" && pwd -P)" || exit 0
+worktree="$(cd "${worktree}" && pwd -P)" || exit 0
+[[ "${sourceRoot}" != "${worktree}" ]] || exit 0
+
+copyIgnoredDirectory() {
+  local relativePath="$1"
+  local source="${sourceRoot}/${relativePath}"
+  local destination="${worktree}/${relativePath}"
+
+  [[ -d "${source}" ]] || return 0
+  if ! git -C "${worktree}" check-ignore -q -- "${relativePath}/"; then
+    echo "worktree-up: refusing non-ignored path ${relativePath}"
+    return 0
+  fi
+
+  mkdir -p "${destination}"
+  while IFS= read -r -d '' sourcePath; do
+    local childPath="${sourcePath#"${source}/"}"
+    local destinationPath="${destination}/${childPath}"
+
+    if [[ -d "${sourcePath}" ]]; then
+      mkdir -p "${destinationPath}"
+    elif [[ -L "${sourcePath}" ]]; then
+      if [[ ! -e "${destinationPath}" && ! -L "${destinationPath}" ]]; then
+        mkdir -p "$(dirname "${destinationPath}")"
+        ln -s "$(readlink "${sourcePath}")" "${destinationPath}"
+      fi
+    elif [[ -f "${sourcePath}" && ! -e "${destinationPath}" ]]; then
+      mkdir -p "$(dirname "${destinationPath}")"
+      cp -p "${sourcePath}" "${destinationPath}"
+    fi
+  done < <(find "${source}" -mindepth 1 -print0)
+  echo "worktree-up: seeded ${relativePath}"
+}
+
+copyIgnoredDirectory ".github/skills"
+copyIgnoredDirectory ".github/prompts"
+copyIgnoredDirectory ".claude/skills"
+
+exit 0

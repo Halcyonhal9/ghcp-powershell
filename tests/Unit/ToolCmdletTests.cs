@@ -52,6 +52,15 @@ public class ToolCmdletTests
     }
 
     [Fact]
+    public void ScriptBlockToolFunction_PreservesOriginalPublicConstructor()
+    {
+        var constructor = typeof(ScriptBlockToolFunction).GetConstructor(
+            [typeof(string), typeof(string), typeof(ScriptBlock), typeof(bool)]);
+
+        Assert.NotNull(constructor);
+    }
+
+    [Fact]
     public void ScriptBlockToolFunction_SkipPermissionSetsAdditionalProperty()
     {
         var tool = new ScriptBlockToolFunction("t", "d", ScriptBlock.Create("1"), skipPermission: true);
@@ -225,6 +234,22 @@ public class ToolCmdletTests
         var result = await tool.InvokeAsync(new AIFunctionArguments());
 
         Assert.Equal("1\n2\n3", result?.ToString()?.ReplaceLineEndings("\n"));
+    }
+
+    [Fact]
+    public async Task InvokeAsync_PreservesConstrainedLanguageMode()
+    {
+        var tool = new ScriptBlockToolFunction(
+            "restricted",
+            "Preserves language mode",
+            ScriptBlock.Create("[System.IO.File]::Exists('.')"),
+            skipPermission: false,
+            languageMode: PSLanguageMode.ConstrainedLanguage);
+
+        var error = await Assert.ThrowsAnyAsync<Exception>(
+            async () => await tool.InvokeAsync(new AIFunctionArguments()));
+
+        Assert.Contains("language mode", error.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     private static JsonElement Parse(string json) => JsonDocument.Parse(json).RootElement;
