@@ -1,7 +1,9 @@
+#pragma warning disable GHCP001 // experimental SDK members: PermissionDecision variants
 using System.Collections;
 using System.IO;
 using System.Management.Automation;
-using GitHub.Copilot.SDK;
+using GitHub.Copilot;
+using GitHub.Copilot.Rpc;
 using Xunit;
 
 using CopilotCmdlets;
@@ -102,7 +104,7 @@ public class SessionCmdletTests
 
         var result = await handler.Invoke(request, invocation);
 
-        Assert.Equal(PermissionRequestResultKind.Approved, result.Kind);
+        Assert.IsType<PermissionDecisionApproveOnce>(result);
     }
 
     [Fact]
@@ -119,7 +121,7 @@ public class SessionCmdletTests
             Console.SetIn(new StringReader("y"));
             Console.SetError(TextWriter.Null);
             var result = await handler.Invoke(request, invocation);
-            Assert.Equal(PermissionRequestResultKind.Approved, result.Kind);
+            Assert.IsType<PermissionDecisionApproveOnce>(result);
         }
         finally
         {
@@ -142,7 +144,7 @@ public class SessionCmdletTests
             Console.SetIn(new StringReader("n"));
             Console.SetError(TextWriter.Null);
             var result = await handler.Invoke(request, invocation);
-            Assert.Equal(PermissionRequestResultKind.Rejected, result.Kind);
+            Assert.IsType<PermissionDecisionReject>(result);
         }
         finally
         {
@@ -278,14 +280,14 @@ public class SessionCmdletTests
     {
         var result = SystemMessageHelper.Build(null, "Append", null)!;
         Assert.Null(result.Content);
-        Assert.Equal(GitHub.Copilot.SDK.SystemMessageMode.Append, result.Mode);
+        Assert.Equal(GitHub.Copilot.SystemMessageMode.Append, result.Mode);
     }
 
     [Fact]
     public void SystemMessageHelper_ParsesModeIgnoringCase()
     {
         var result = SystemMessageHelper.Build(null, "replace", null)!;
-        Assert.Equal(GitHub.Copilot.SDK.SystemMessageMode.Replace, result.Mode);
+        Assert.Equal(GitHub.Copilot.SystemMessageMode.Replace, result.Mode);
     }
 
     [Fact]
@@ -298,11 +300,11 @@ public class SessionCmdletTests
         };
 
         var result = SystemMessageHelper.Build(null, "Customize", sections)!;
-        Assert.Equal(GitHub.Copilot.SDK.SystemMessageMode.Customize, result.Mode);
+        Assert.Equal(GitHub.Copilot.SystemMessageMode.Customize, result.Mode);
         Assert.Equal(2, result.Sections!.Count);
-        Assert.Equal(SectionOverrideAction.Replace, result.Sections["behavior"].Action);
-        Assert.Equal("Be concise", result.Sections["behavior"].Content);
-        Assert.Equal(SectionOverrideAction.Remove, result.Sections["tools"].Action);
+        Assert.Equal(SectionOverrideAction.Replace, result.Sections[new SystemMessageSection("behavior")].Action);
+        Assert.Equal("Be concise", result.Sections[new SystemMessageSection("behavior")].Content);
+        Assert.Equal(SectionOverrideAction.Remove, result.Sections[new SystemMessageSection("tools")].Action);
     }
 
     [Fact]
@@ -353,9 +355,9 @@ public class SessionCmdletTests
 
         var result = SystemMessageHelper.Build(null, "Customize", sections)!;
         Assert.Equal(2, result.Sections!.Count);
-        Assert.Equal(SectionOverrideAction.Replace, result.Sections["behavior"].Action);
-        Assert.Equal("Be concise", result.Sections["behavior"].Content);
-        Assert.Equal(SectionOverrideAction.Remove, result.Sections["tools"].Action);
+        Assert.Equal(SectionOverrideAction.Replace, result.Sections[new SystemMessageSection("behavior")].Action);
+        Assert.Equal("Be concise", result.Sections[new SystemMessageSection("behavior")].Content);
+        Assert.Equal(SectionOverrideAction.Remove, result.Sections[new SystemMessageSection("tools")].Action);
     }
 
     [Fact]
@@ -369,8 +371,8 @@ public class SessionCmdletTests
 
         var result = SystemMessageHelper.Build(null, null, sections)!;
         Assert.Equal(2, result.Sections!.Count);
-        Assert.Equal(SectionOverrideAction.Append, result.Sections["typed"].Action);
-        Assert.Equal(SectionOverrideAction.Prepend, result.Sections["hashtable"].Action);
+        Assert.Equal(SectionOverrideAction.Append, result.Sections[new SystemMessageSection("typed")].Action);
+        Assert.Equal(SectionOverrideAction.Prepend, result.Sections[new SystemMessageSection("hashtable")].Action);
     }
 
     [Fact]

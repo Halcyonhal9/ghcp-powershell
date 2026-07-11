@@ -1,6 +1,7 @@
+#pragma warning disable GHCP001 // experimental SDK members: ModelCapabilitiesOverride
 using System.Management.Automation;
-using GitHub.Copilot.SDK;
-using GitHub.Copilot.SDK.Rpc;
+using GitHub.Copilot;
+using GitHub.Copilot.Rpc;
 
 namespace CopilotCmdlets;
 

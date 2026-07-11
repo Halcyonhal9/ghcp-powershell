@@ -1,5 +1,5 @@
 using System.Management.Automation;
-using GitHub.Copilot.SDK;
+using GitHub.Copilot;
 using Xunit;
 
 using CopilotCmdlets;
@@ -7,6 +7,7 @@ using CopilotCmdlets;
 namespace CopilotCmdlets.Tests.EndToEnd;
 
 [Trait("Category", "EndToEnd")]
+[Collection("EndToEnd")]
 public class ClientLifecycleTests : IAsyncLifetime
 {
     private PowerShell ps = null!;
@@ -14,9 +15,7 @@ public class ClientLifecycleTests : IAsyncLifetime
     public Task InitializeAsync()
     {
         ps = PowerShell.Create();
-        var modulePath = Path.Combine(
-            AppContext.BaseDirectory, "..", "..", "..", "..", "out", "CopilotCmdlets.psd1");
-        ps.AddCommand("Import-Module").AddParameter("Name", Path.GetFullPath(modulePath));
+        ps.AddCommand("Import-Module").AddParameter("Name", E2eModule.ResolveManifest());
         ps.Invoke();
         ps.Commands.Clear();
         return Task.CompletedTask;

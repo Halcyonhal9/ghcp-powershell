@@ -1,5 +1,6 @@
+#pragma warning disable GHCP001 // experimental SDK members: AssistantUsageData.Cost
 using System.Management.Automation;
-using GitHub.Copilot.SDK;
+using GitHub.Copilot;
 
 namespace CopilotCmdlets;
 
@@ -25,10 +26,10 @@ public class CopilotMessageResult
     public List<AssistantUsageData> UsageEvents { get; set; } = new();
 
     /// <summary>Aggregated input tokens across all LLM calls in this message.</summary>
-    public double TotalInputTokens => UsageEvents.Sum(u => u.InputTokens ?? 0);
+    public long TotalInputTokens => UsageEvents.Sum(u => u.InputTokens ?? 0);
 
     /// <summary>Aggregated output tokens across all LLM calls in this message.</summary>
-    public double TotalOutputTokens => UsageEvents.Sum(u => u.OutputTokens ?? 0);
+    public long TotalOutputTokens => UsageEvents.Sum(u => u.OutputTokens ?? 0);
 
     /// <summary>Context window state at last usage_info event.</summary>
     public SessionUsageInfoData? ContextWindow { get; set; }
@@ -58,6 +59,15 @@ public sealed class SendCopilotMessageCmdlet : PSCmdlet
     [Parameter]
     public string? BlobMimeType { get; set; }
 
+    /// <summary>Message delivery mode: 'enqueue' (default) or 'immediate' to interject mid-turn.</summary>
+    [Parameter]
+    [ArgumentCompleter(typeof(MessageModeCompleter))]
+    public string? Mode { get; set; }
+
+    /// <summary>Text shown in the session timeline instead of the prompt.</summary>
+    [Parameter]
+    public string? DisplayPrompt { get; set; }
+
     [Parameter]
     public TimeSpan Timeout { get; set; } = TimeSpan.FromMinutes(5);
 
@@ -83,7 +93,7 @@ public sealed class SendCopilotMessageCmdlet : PSCmdlet
         using var idleSignal = new ManualResetEventSlim(false);
         Exception? sessionError = null;
 
-        var subscription = target.On(new SessionEventHandler(sessionEvent =>
+        var subscription = target.On<SessionEvent>(sessionEvent =>
         {
             result.Events.Add(sessionEvent);
 
@@ -95,7 +105,7 @@ public sealed class SendCopilotMessageCmdlet : PSCmdlet
 
                 case AssistantMessageEvent msg:
                     result.MessageId = msg.Data.MessageId;
-                    result.Content = msg.Data.Content ?? string.Empty;
+                    result.Content = msg.Data.Content;
                     break;
 
                 case ToolExecutionStartEvent toolStart:
@@ -128,40 +138,21 @@ public sealed class SendCopilotMessageCmdlet : PSCmdlet
                     idleSignal.Set();
                     break;
             }
-        }));
+        });
 
         try
         {
             var options = new MessageOptions { Prompt = Prompt };
+            if (Mode is not null) options.Mode = Mode;
+            if (DisplayPrompt is not null) options.DisplayPrompt = DisplayPrompt;
 
-            var attachments = new List<UserMessageAttachment>();
-
-            if (Attachment is { Length: > 0 })
-            {
-                attachments.AddRange(Attachment.Select(path =>
-                    (UserMessageAttachment)new UserMessageAttachmentFile
-                    {
-                        Path = path,
-                        DisplayName = System.IO.Path.GetFileName(path),
-                        Type = "file"
-                    }));
-            }
-
-            if (BlobData is not null)
-            {
-                attachments.Add(new UserMessageAttachmentBlob
-                {
-                    Data = BlobData,
-                    MimeType = BlobMimeType ?? "application/octet-stream"
-                });
-            }
-
-            if (attachments.Count > 0)
+            var attachments = AttachmentHelper.Build(Attachment, BlobData, BlobMimeType);
+            if (attachments is not null)
             {
                 options.Attachments = attachments;
             }
 
-            target.SendAsync(options, _cts.Token).GetAwaiter().GetResult();
+            result.MessageId = target.SendAsync(options, _cts.Token).GetAwaiter().GetResult();
 
             if (!idleSignal.Wait(Timeout, _cts.Token))
             {
@@ -212,7 +203,7 @@ public sealed class GetCopilotMessageCmdlet : PSCmdlet
 
         try
         {
-            var messages = target.GetMessagesAsync(CancellationToken.None)
+            var messages = target.GetEventsAsync(CancellationToken.None)
                 .GetAwaiter().GetResult();
             WriteObject(messages, enumerateCollection: true);
         }
@@ -221,5 +212,67 @@ public sealed class GetCopilotMessageCmdlet : PSCmdlet
             ThrowTerminatingError(new ErrorRecord(
                 ex, "GetMessagesFailed", ErrorCategory.ReadError, null));
         }
+    }
+}
+
+/// <summary>
+/// Stop-CopilotMessage — aborts the session's in-flight processing
+/// (delegates to the SDK session.AbortAsync).
+/// </summary>
+[Cmdlet(VerbsLifecycle.Stop, "CopilotMessage")]
+public sealed class StopCopilotMessageCmdlet : PSCmdlet
+{
+    [Parameter]
+    [CopilotSessionTransformation]
+    [ArgumentCompleter(typeof(CopilotSessionCompleter))]
+    public CopilotSession? Session { get; set; }
+
+    protected override void EndProcessing()
+    {
+        if (!ModuleState.TryRequireSession(Session, out var target, out var noSession))
+        {
+            ThrowTerminatingError(noSession!);
+            return;
+        }
+
+        try
+        {
+            target.AbortAsync(CancellationToken.None).GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            ThrowTerminatingError(new ErrorRecord(
+                ex, "AbortFailed", ErrorCategory.InvalidOperation, target));
+        }
+    }
+}
+
+internal static class AttachmentHelper
+{
+    /// <summary>Builds SDK attachments from cmdlet -Attachment paths and inline blob data.</summary>
+    internal static List<GitHub.Copilot.Attachment>? Build(string[]? paths, string? blobData, string? blobMimeType)
+    {
+        var attachments = new List<GitHub.Copilot.Attachment>();
+
+        if (paths is { Length: > 0 })
+        {
+            attachments.AddRange(paths.Select(path =>
+                (GitHub.Copilot.Attachment)new AttachmentFile
+                {
+                    Path = path,
+                    DisplayName = System.IO.Path.GetFileName(path)
+                }));
+        }
+
+        if (blobData is not null)
+        {
+            attachments.Add(new AttachmentBlob
+            {
+                Data = blobData,
+                MimeType = blobMimeType ?? "application/octet-stream"
+            });
+        }
+
+        return attachments.Count > 0 ? attachments : null;
     }
 }

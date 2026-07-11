@@ -1,5 +1,10 @@
 # Message History — Design Doc
 
+> **Updated for GitHub.Copilot.SDK 1.0.x:** the SDK method is now
+> `GetEventsAsync` (formerly `GetMessagesAsync`) and SDK types live in the
+> `GitHub.Copilot` namespace (formerly `GitHub.Copilot.SDK`). References
+> below have been updated; historical line numbers may have drifted.
+
 ## 1. Question
 
 > Is it possible for us to implement a `Get-CopilotMessage` or
@@ -8,7 +13,7 @@
 
 **Short answer:** Yes — and the cmdlet already exists. `Get-CopilotMessage`
 ships today (see `src/MessageCmdlets.cs:147`) and is a thin pass-through to
-`CopilotSession.GetMessagesAsync()` on the SDK. It returns
+`CopilotSession.GetEventsAsync()` on the SDK. It returns
 `IReadOnlyList<SessionEvent>`, which is the same event type family surfaced by
 the live session handler — so tool-call events, assistant deltas, user
 messages, idle/error markers, etc., are all representable.
@@ -33,14 +38,14 @@ public sealed class GetCopilotMessageCmdlet : PSCmdlet
     protected override void EndProcessing()
     {
         // ... resolves Session (explicit or module default) ...
-        var messages = target.GetMessagesAsync(CancellationToken.None)
+        var messages = target.GetEventsAsync(CancellationToken.None)
             .GetAwaiter().GetResult();
         WriteObject(messages, enumerateCollection: true);
     }
 }
 ```
 
-- Pass-through to `session.GetMessagesAsync()`.
+- Pass-through to `session.GetEventsAsync()`.
 - Uses `ModuleState.TryRequireSession` so `-Session` is optional; the
   module-default session is used otherwise.
 - Output type declared as `SessionEvent` — the same base type the streaming
@@ -61,10 +66,10 @@ know the live stream emits at least:
 | `SessionIdleEvent` | End-of-turn marker |
 | `SessionErrorEvent` | `ErrorType`, `Message` |
 
-User messages and attachments are modeled SDK-side via
-`UserMessageDataAttachmentsItem` / `UserMessageDataAttachmentsItemFile`
-(referenced in `src/MessageCmdlets.cs:106`), so historical user turns are
-already represented in the SDK surface.
+User messages and attachments are modeled SDK-side via the `Attachment`
+hierarchy (`AttachmentFile`, `AttachmentBlob`, …; see `AttachmentHelper` in
+`src/MessageCmdlets.cs`), so historical user turns are already represented in
+the SDK surface.
 
 ### 2.3 Tests that cover it today
 
@@ -78,11 +83,11 @@ already represented in the SDK surface.
 Before committing to any additional work, we need to empirically confirm the
 SDK's behavior — nothing below should be inferred from docs alone.
 
-1. **Does `GetMessagesAsync` return historical `ToolExecution*` events?**
+1. **Does `GetEventsAsync` return historical `ToolExecution*` events?**
    The live handler sees them, but history may be compacted to message-only.
    If tool events are dropped, that is an **SDK gap**, not something we patch
    around locally — we file an SDK feature request per `CLAUDE.md`.
-2. **Does `GetMessagesAsync` work after `Resume-CopilotSession`** on a
+2. **Does `GetEventsAsync` work after `Resume-CopilotSession`** on a
    session we didn't originate in this process? A resumed session is the
    primary use case for "view prior messages".
 3. **Does history include the user turn(s)** (prompts + attachments), not just
@@ -92,7 +97,7 @@ SDK's behavior — nothing below should be inferred from docs alone.
 5. **Are tool arguments and tool results retained**, or only
    `ToolName`/`ToolCallId`/`Success`? Users asking for "all the associated
    tool calls" probably expect arguments and outputs.
-6. **Is there a paging / filter API** on `GetMessagesAsync` (e.g.
+6. **Is there a paging / filter API** on `GetEventsAsync` (e.g.
    since-messageId, max count)? The current signature in the code only takes
    a `CancellationToken`.
 
@@ -177,13 +182,13 @@ table clarifying that `Get-CopilotMessage` retrieves the *full transcript*
 
 ### Task C — Parameter Additions (only if SDK supports them)
 
-If the SDK `GetMessagesAsync` overloads expose filtering (e.g. since,
+If the SDK `GetEventsAsync` overloads expose filtering (e.g. since,
 max-count, types), add matching pass-through parameters:
 
 | Parameter | Type | Maps to |
 |---|---|---|
-| `-Since` | `string` (messageId) | `GetMessagesAsync(since: …)` |
-| `-Limit` | `int` | `GetMessagesAsync(limit: …)` |
+| `-Since` | `string` (messageId) | `GetEventsAsync(since: …)` |
+| `-Limit` | `int` | `GetEventsAsync(limit: …)` |
 
 **Rule:** one parameter per SDK capability, nothing more. If the SDK does
 not provide it, we do not implement it client-side.
@@ -234,12 +239,12 @@ Get-CopilotMessage
 
 # Assistant turns only
 Get-CopilotMessage |
-    Where-Object { $_ -is [GitHub.Copilot.SDK.AssistantMessageEvent] } |
+    Where-Object { $_ -is [GitHub.Copilot.AssistantMessageEvent] } |
     ForEach-Object { $_.Data.Content }
 
 # Every tool Copilot invoked this session
 Get-CopilotMessage |
-    Where-Object { $_ -is [GitHub.Copilot.SDK.ToolExecutionStartEvent] } |
+    Where-Object { $_ -is [GitHub.Copilot.ToolExecutionStartEvent] } |
     Select-Object @{n='Tool';e={$_.Data.ToolName}}, @{n='Id';e={$_.Data.ToolCallId}}
 ```
 
@@ -263,7 +268,7 @@ just elevates it into the user-facing README.
 ## 8. Summary
 
 - `Get-CopilotMessage` already delivers the requested capability at the API
-  level — `session.GetMessagesAsync()` returns `SessionEvent` history, and
+  level — `session.GetEventsAsync()` returns `SessionEvent` history, and
   the cmdlet is a ~25-line pass-through.
 - The real work is (a) verifying exactly what the SDK includes (tool args?
   user turns? ordering? resume support?) and (b) either documenting it or

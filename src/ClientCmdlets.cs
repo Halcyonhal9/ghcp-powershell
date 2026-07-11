@@ -1,6 +1,7 @@
+using System.Collections;
 using System.Diagnostics;
 using System.Management.Automation;
-using GitHub.Copilot.SDK;
+using GitHub.Copilot;
 
 namespace CopilotCmdlets;
 
@@ -19,7 +20,7 @@ public sealed class NewCopilotClientCmdlet : PSCmdlet
 
     [Parameter]
     [ArgumentCompleter(typeof(LogLevelCompleter))]
-    public string LogLevel { get; set; } = "info";
+    public string? LogLevel { get; set; }
 
     [Parameter]
     public string? OtlpEndpoint { get; set; }
@@ -27,12 +28,20 @@ public sealed class NewCopilotClientCmdlet : PSCmdlet
     [Parameter]
     public string? TelemetrySourceName { get; set; }
 
-    protected override void EndProcessing()
+    [Parameter]
+    public string? WorkingDirectory { get; set; }
+
+    [Parameter]
+    public Hashtable? Environment { get; set; }
+
+    [Parameter]
+    public SwitchParameter UseLoggedInUser { get; set; }
+
+    internal CopilotClientOptions BuildOptions()
     {
-        var options = new CopilotClientOptions
-        {
-            LogLevel = LogLevel
-        };
+        var options = new CopilotClientOptions();
+
+        if (LogLevel is not null) options.LogLevel = new CopilotLogLevel(LogLevel);
 
         if (OtlpEndpoint is not null || TelemetrySourceName is not null)
         {
@@ -44,23 +53,51 @@ public sealed class NewCopilotClientCmdlet : PSCmdlet
         }
 
         if (GitHubToken is not null) options.GitHubToken = GitHubToken;
-        if (CliPath is not null)
+        if (WorkingDirectory is not null)
+            options.WorkingDirectory = GetUnresolvedProviderPathFromPSPath(WorkingDirectory);
+        if (UseLoggedInUser.IsPresent) options.UseLoggedInUser = true;
+
+        if (Environment is not null)
         {
-            options.CliPath = CliPath;
+            var env = new Dictionary<string, string>();
+            foreach (DictionaryEntry entry in Environment)
+            {
+                env[entry.Key.ToString()!] = McpServerHelper.Unwrap(entry.Value)?.ToString() ?? string.Empty;
+            }
+            options.Environment = env;
+        }
+
+        if (CliUrl is not null)
+        {
+            options.Connection = RuntimeConnection.ForUri(CliUrl);
         }
         else
         {
-            var bundled = ModuleState.ResolveBundledCliPath();
-            if (bundled is not null)
-                options.CliPath = bundled;
-        }
-        if (CliUrl is not null)
-        {
-            options.CliUrl = CliUrl;
-            options.UseStdio = false;
+            // The SDK resolves its bundled CLI relative to the host application
+            // (pwsh), so always pass the module-relative path explicitly.
+            var cli = CliPath ?? ModuleState.ResolveBundledCliPath();
+            if (cli is not null)
+                options.Connection = RuntimeConnection.ForStdio(cli);
         }
 
-        var client = new CopilotClient(options);
+        return options;
+    }
+
+    protected override void EndProcessing()
+    {
+        var options = BuildOptions();
+
+        CopilotClient client;
+        try
+        {
+            client = new CopilotClient(options);
+        }
+        catch (Exception ex)
+        {
+            ThrowTerminatingError(new ErrorRecord(
+                ex, "ClientOptionsInvalid", ErrorCategory.InvalidArgument, null));
+            return;
+        }
 
         try
         {
@@ -148,7 +185,7 @@ public sealed class TestCopilotConnectionCmdlet : PSCmdlet
 
         try
         {
-            var response = target.PingAsync(Message ?? string.Empty, CancellationToken.None)
+            var response = target.PingAsync(Message, CancellationToken.None)
                 .GetAwaiter().GetResult();
             WriteObject(response);
         }
@@ -156,6 +193,64 @@ public sealed class TestCopilotConnectionCmdlet : PSCmdlet
         {
             ThrowTerminatingError(new ErrorRecord(
                 ex, "PingFailed", ErrorCategory.ConnectionError, target));
+        }
+    }
+}
+
+[Cmdlet(VerbsCommon.Get, "CopilotStatus")]
+[OutputType(typeof(GetStatusResponse))]
+public sealed class GetCopilotStatusCmdlet : PSCmdlet
+{
+    [Parameter]
+    public CopilotClient? Client { get; set; }
+
+    protected override void EndProcessing()
+    {
+        if (!ModuleState.TryRequireClient(Client, out var target, out var noClient))
+        {
+            ThrowTerminatingError(noClient!);
+            return;
+        }
+
+        try
+        {
+            var status = target.GetStatusAsync(CancellationToken.None)
+                .GetAwaiter().GetResult();
+            WriteObject(status);
+        }
+        catch (Exception ex)
+        {
+            ThrowTerminatingError(new ErrorRecord(
+                ex, "GetStatusFailed", ErrorCategory.ConnectionError, target));
+        }
+    }
+}
+
+[Cmdlet(VerbsCommon.Get, "CopilotAuthStatus")]
+[OutputType(typeof(GetAuthStatusResponse))]
+public sealed class GetCopilotAuthStatusCmdlet : PSCmdlet
+{
+    [Parameter]
+    public CopilotClient? Client { get; set; }
+
+    protected override void EndProcessing()
+    {
+        if (!ModuleState.TryRequireClient(Client, out var target, out var noClient))
+        {
+            ThrowTerminatingError(noClient!);
+            return;
+        }
+
+        try
+        {
+            var status = target.GetAuthStatusAsync(CancellationToken.None)
+                .GetAwaiter().GetResult();
+            WriteObject(status);
+        }
+        catch (Exception ex)
+        {
+            ThrowTerminatingError(new ErrorRecord(
+                ex, "GetAuthStatusFailed", ErrorCategory.ConnectionError, target));
         }
     }
 }

@@ -1,5 +1,5 @@
 using System.Management.Automation;
-using GitHub.Copilot.SDK;
+using GitHub.Copilot;
 using Xunit;
 
 using CopilotCmdlets;
@@ -19,10 +19,10 @@ public class ClientCmdletTests
     }
 
     [Fact]
-    public void NewCopilotClient_LogLevelDefaultsToInfo()
+    public void NewCopilotClient_LogLevelDefaultsToUnset()
     {
         var cmdlet = new NewCopilotClientCmdlet();
-        Assert.Equal("info", cmdlet.LogLevel);
+        Assert.Null(cmdlet.LogLevel);
     }
 
     [Fact]

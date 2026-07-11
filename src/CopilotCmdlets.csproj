@@ -8,8 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="GitHub.Copilot.SDK" Version="0.3.0" />
-    <PackageReference Include="System.Management.Automation" Version="7.5.*" PrivateAssets="all" />
+    <PackageReference Include="GitHub.Copilot.SDK" Version="1.0.6" />
+    <PackageReference Include="System.Management.Automation" Version="7.6.*" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>

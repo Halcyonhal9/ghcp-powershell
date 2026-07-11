@@ -1,5 +1,5 @@
 using System.Management.Automation;
-using GitHub.Copilot.SDK;
+using GitHub.Copilot;
 
 namespace CopilotCmdlets;
 
@@ -37,8 +37,8 @@ public class CopilotAsyncResult : IDisposable
 
     internal void Start(MessageOptions options)
     {
-        _subscription = Session.On(new SessionEventHandler(OnEvent));
-        Session.SendAsync(options, _cts.Token).GetAwaiter().GetResult();
+        _subscription = Session.On<SessionEvent>(OnEvent);
+        Result.MessageId = Session.SendAsync(options, _cts.Token).GetAwaiter().GetResult();
     }
 
     private void OnEvent(SessionEvent sessionEvent)
@@ -51,7 +51,7 @@ public class CopilotAsyncResult : IDisposable
             {
                 case AssistantMessageEvent msg:
                     Result.MessageId = msg.Data.MessageId;
-                    Result.Content = msg.Data.Content ?? string.Empty;
+                    Result.Content = msg.Data.Content;
                     break;
 
                 case AssistantUsageEvent usage:
@@ -133,6 +133,15 @@ public sealed class SendCopilotMessageAsyncCmdlet : PSCmdlet
     [Parameter]
     public string? BlobMimeType { get; set; }
 
+    /// <summary>Message delivery mode: 'enqueue' (default) or 'immediate' to interject mid-turn.</summary>
+    [Parameter]
+    [ArgumentCompleter(typeof(MessageModeCompleter))]
+    public string? Mode { get; set; }
+
+    /// <summary>Text shown in the session timeline instead of the prompt.</summary>
+    [Parameter]
+    public string? DisplayPrompt { get; set; }
+
     protected override void EndProcessing()
     {
         if (!ModuleState.TryRequireSession(Session, out var target, out var noSession))
@@ -144,30 +153,11 @@ public sealed class SendCopilotMessageAsyncCmdlet : PSCmdlet
         var asyncResult = new CopilotAsyncResult(target, Tag);
 
         var options = new MessageOptions { Prompt = Prompt };
+        if (Mode is not null) options.Mode = Mode;
+        if (DisplayPrompt is not null) options.DisplayPrompt = DisplayPrompt;
 
-        var attachments = new List<UserMessageAttachment>();
-
-        if (Attachment is { Length: > 0 })
-        {
-            attachments.AddRange(Attachment.Select(path =>
-                (UserMessageAttachment)new UserMessageAttachmentFile
-                {
-                    Path = path,
-                    DisplayName = System.IO.Path.GetFileName(path),
-                    Type = "file"
-                }));
-        }
-
-        if (BlobData is not null)
-        {
-            attachments.Add(new UserMessageAttachmentBlob
-            {
-                Data = BlobData,
-                MimeType = BlobMimeType ?? "application/octet-stream"
-            });
-        }
-
-        if (attachments.Count > 0)
+        var attachments = AttachmentHelper.Build(Attachment, BlobData, BlobMimeType);
+        if (attachments is not null)
         {
             options.Attachments = attachments;
         }
@@ -231,6 +221,14 @@ public sealed class ReceiveCopilotAsyncResultCmdlet : PSCmdlet
             {
                 try { asyncResult.Session.DisposeAsync().GetAwaiter().GetResult(); }
                 catch { /* best-effort cleanup */ }
+
+                // If this was the module-default session, clear it so later
+                // cmdlets fail with a clean "no session" error instead of
+                // hitting a disposed session.
+                if (ReferenceEquals(asyncResult.Session, ModuleState.CurrentSession))
+                {
+                    ModuleState.CurrentSession = null;
+                }
             }
         }
     }

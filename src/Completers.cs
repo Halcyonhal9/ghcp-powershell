@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Management.Automation;
 using System.Management.Automation.Language;
-using GitHub.Copilot.SDK;
+using GitHub.Copilot;
 
 namespace CopilotCmdlets;
 
@@ -67,7 +67,7 @@ public sealed class CopilotSessionCompleter : IArgumentCompleter
         IEnumerable<SessionMetadata> sessions;
         try
         {
-            sessions = client.ListSessionsAsync(new SessionListFilter(), CancellationToken.None)
+            sessions = client.ListSessionsAsync(null, CancellationToken.None)
                 .GetAwaiter().GetResult();
         }
         catch (Exception ex)
@@ -169,11 +169,37 @@ public sealed class SectionOverrideActionCompleter : IArgumentCompleter
 }
 
 /// <summary>
-/// Provides tab-completion for -LogLevel parameters with standard log levels.
+/// Provides tab-completion for -Mode parameters on Send-CopilotMessage cmdlets.
+/// </summary>
+public sealed class MessageModeCompleter : IArgumentCompleter
+{
+    private static readonly string[] Modes = { "enqueue", "immediate" };
+
+    public IEnumerable<CompletionResult> CompleteArgument(
+        string commandName,
+        string parameterName,
+        string wordToComplete,
+        CommandAst commandAst,
+        IDictionary fakeBoundParameters)
+    {
+        var prefix = wordToComplete ?? string.Empty;
+
+        foreach (var mode in Modes)
+        {
+            if (mode.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                yield return new CompletionResult(mode, mode, CompletionResultType.ParameterValue, mode);
+            }
+        }
+    }
+}
+
+/// <summary>
+/// Provides tab-completion for -LogLevel parameters with the runtime's log levels.
 /// </summary>
 public sealed class LogLevelCompleter : IArgumentCompleter
 {
-    private static readonly string[] Levels = { "trace", "debug", "info", "warn", "error" };
+    private static readonly string[] Levels = { "none", "error", "warning", "info", "debug", "all" };
 
     public IEnumerable<CompletionResult> CompleteArgument(
         string commandName,

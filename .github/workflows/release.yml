@@ -117,10 +117,13 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed for $rid" }
           }
 
-          # RID-neutral gallery build
+          # RID-neutral gallery build. Skip the SDK's automatic CLI download:
+          # it would bundle the CI host's (linux-x64) CLI into the gallery
+          # package. The per-RID native payloads are merged in explicitly by
+          # the staging step below.
           $galleryDir = Join-Path $outDir 'gallery'
           Write-Host "Publishing RID-neutral gallery build -> $galleryDir"
-          dotnet publish $project -c Release -o $galleryDir
+          dotnet publish $project -c Release -o $galleryDir -p:CopilotSkipCliDownload=true
           if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed for gallery build" }
 
       - name: Stage module files and create release zips

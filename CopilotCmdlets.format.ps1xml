@@ -8,7 +8,7 @@
     <View>
       <Name>ModelInfo_Table</Name>
       <ViewSelectedBy>
-        <TypeName>GitHub.Copilot.SDK.ModelInfo</TypeName>
+        <TypeName>GitHub.Copilot.ModelInfo</TypeName>
       </ViewSelectedBy>
       <TableControl>
         <TableHeaders>
@@ -40,7 +40,7 @@
     <View>
       <Name>ModelInfo_List</Name>
       <ViewSelectedBy>
-        <TypeName>GitHub.Copilot.SDK.ModelInfo</TypeName>
+        <TypeName>GitHub.Copilot.ModelInfo</TypeName>
       </ViewSelectedBy>
       <ListControl>
         <ListEntries>
@@ -69,7 +69,7 @@
     <View>
       <Name>SessionMetadata_Table</Name>
       <ViewSelectedBy>
-        <TypeName>GitHub.Copilot.SDK.SessionMetadata</TypeName>
+        <TypeName>GitHub.Copilot.SessionMetadata</TypeName>
       </ViewSelectedBy>
       <TableControl>
         <TableHeaders>
@@ -99,7 +99,7 @@
     <View>
       <Name>SessionMetadata_List</Name>
       <ViewSelectedBy>
-        <TypeName>GitHub.Copilot.SDK.SessionMetadata</TypeName>
+        <TypeName>GitHub.Copilot.SessionMetadata</TypeName>
       </ViewSelectedBy>
       <ListControl>
         <ListEntries>
@@ -110,7 +110,7 @@
               <ListItem><PropertyName>ModifiedTime</PropertyName></ListItem>
               <ListItem><PropertyName>Summary</PropertyName></ListItem>
               <ListItem><PropertyName>IsRemote</PropertyName></ListItem>
-              <ListItem><Label>Cwd</Label><ScriptBlock>$_.Context.Cwd</ScriptBlock></ListItem>
+              <ListItem><Label>Cwd</Label><ScriptBlock>$_.Context.WorkingDirectory</ScriptBlock></ListItem>
               <ListItem><Label>GitRoot</Label><ScriptBlock>$_.Context.GitRoot</ScriptBlock></ListItem>
               <ListItem><Label>Repository</Label><ScriptBlock>$_.Context.Repository</ScriptBlock></ListItem>
               <ListItem><Label>Branch</Label><ScriptBlock>$_.Context.Branch</ScriptBlock></ListItem>

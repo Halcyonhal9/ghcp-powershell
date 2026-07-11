@@ -14,7 +14,7 @@
 
 ## Architecture
 
-- Five C# source files in `src/`, one test project in `tests/`. Keep it flat.
+- A flat set of C# source files in `src/`, one test project in `tests/`. Keep it flat.
 - `ModuleState` is the only singleton. Cmdlets are stateless beyond what `ModuleState` holds.
 - Cmdlets accept explicit `-Client` / `-Session` parameters; fall back to `ModuleState` defaults.
 - No custom abstractions unless required for testability (e.g., thin interface wrappers around sealed SDK types).
