@@ -37,7 +37,10 @@ public sealed class NewCopilotClientCmdlet : PSCmdlet
     [Parameter]
     public SwitchParameter UseLoggedInUser { get; set; }
 
-    internal CopilotClientOptions BuildOptions()
+    internal CopilotClientOptions BuildOptions() =>
+        BuildOptions(ModuleState.ResolveBundledCliPath);
+
+    internal CopilotClientOptions BuildOptions(Func<string?> resolveBundledCli)
     {
         var options = new CopilotClientOptions();
 
@@ -75,17 +78,52 @@ public sealed class NewCopilotClientCmdlet : PSCmdlet
         {
             // The SDK resolves its bundled CLI relative to the host application
             // (pwsh), so always pass the module-relative path explicitly.
-            var cli = CliPath ?? ModuleState.ResolveBundledCliPath();
+            var cli = CliPath ?? resolveBundledCli();
             if (cli is not null)
+            {
                 options.Connection = RuntimeConnection.ForStdio(cli);
+            }
+            else if (!HasCliPathEnvOverride(options))
+            {
+                // Fail here with the module's guidance instead of letting the
+                // SDK surface a raw "runtime not found" error pointing at the
+                // pwsh install directory.
+                throw new FileNotFoundException(ModuleState.BuildMissingCliMessage());
+            }
+            // Otherwise leave Connection unset: the SDK honors COPILOT_CLI_PATH.
         }
 
         return options;
     }
 
+    /// <summary>The SDK falls back to COPILOT_CLI_PATH (from options.Environment
+    /// or the process environment) when no explicit connection path is set.</summary>
+    private static bool HasCliPathEnvOverride(CopilotClientOptions options)
+    {
+        if (options.Environment is not null &&
+            options.Environment.TryGetValue("COPILOT_CLI_PATH", out var fromOptions) &&
+            !string.IsNullOrEmpty(fromOptions))
+        {
+            return true;
+        }
+
+        return !string.IsNullOrEmpty(
+            System.Environment.GetEnvironmentVariable("COPILOT_CLI_PATH"));
+    }
+
     protected override void EndProcessing()
     {
-        var options = BuildOptions();
+        CopilotClientOptions options;
+        try
+        {
+            options = BuildOptions();
+        }
+        catch (FileNotFoundException ex)
+        {
+            ThrowTerminatingError(new ErrorRecord(
+                ex, "CliNotFound", ErrorCategory.ObjectNotFound, null));
+            return;
+        }
 
         CopilotClient client;
         try
