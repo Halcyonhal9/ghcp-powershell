@@ -50,6 +50,25 @@ Or use the convenience script, which builds the supported runtime packages:
 pwsh build.ps1
 ```
 
+### Local skills in worktrees
+
+Local agent skills and prompts are intentionally ignored by Git. Keep the
+canonical copies in the repository's primary checkout under `.github/skills`,
+`.github/prompts`, and `.claude/skills`.
+
+Fresh worktrees created through `copilot-tmux` automatically run the tracked
+`.tmuxapp/worktree-up` hook. It copies those ignored directories from the
+primary checkout without overwriting worktree-local files, and refuses to copy
+a path unless the worktree's committed `.gitignore` rules ignore it.
+
+To seed an existing linked worktree manually:
+
+```bash
+./.tmuxapp/worktree-up "$PWD"
+```
+
+Restart Copilot after seeding so the new session reloads the skill inventory.
+
 ## First-time authentication
 
 Use `Connect-Copilot` to launch the bundled GitHub Copilot CLI interactively. At the CLI prompt, run `/login` to authenticate, then `/exit` to return to PowerShell.
