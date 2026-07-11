@@ -162,4 +162,67 @@ public class OptionMappingTests
         Assert.Null(options.Telemetry);
         Assert.Null(options.Environment);
     }
+
+    /// <summary>Runs an action with COPILOT_CLI_PATH set to the given value, restoring afterwards.</summary>
+    private static void WithCliPathEnv(string? value, Action action)
+    {
+        var original = System.Environment.GetEnvironmentVariable("COPILOT_CLI_PATH");
+        try
+        {
+            System.Environment.SetEnvironmentVariable("COPILOT_CLI_PATH", value);
+            action();
+        }
+        finally
+        {
+            System.Environment.SetEnvironmentVariable("COPILOT_CLI_PATH", original);
+        }
+    }
+
+    [Fact]
+    public void BuildOptions_NoCliAnywhere_ThrowsWithModuleGuidance()
+    {
+        WithCliPathEnv(null, () =>
+        {
+            var ex = Assert.Throws<FileNotFoundException>(
+                () => new NewCopilotClientCmdlet().BuildOptions(() => null));
+
+            Assert.Contains("-CliPath", ex.Message);
+            Assert.Contains("github.com/Halcyonhal9/ghcp-powershell/releases", ex.Message);
+        });
+    }
+
+    [Fact]
+    public void BuildOptions_EnvironmentParameterCliPathOverride_SkipsThrow()
+    {
+        var cmdlet = new NewCopilotClientCmdlet
+        {
+            Environment = new Hashtable { ["COPILOT_CLI_PATH"] = "/custom/copilot" }
+        };
+
+        var options = cmdlet.BuildOptions(() => null);
+
+        // Connection stays unset; the SDK resolves COPILOT_CLI_PATH itself.
+        Assert.Null(options.Connection);
+        Assert.Equal("/custom/copilot", options.Environment!["COPILOT_CLI_PATH"]);
+    }
+
+    [Fact]
+    public void BuildOptions_ProcessEnvCliPathOverride_SkipsThrow()
+    {
+        WithCliPathEnv("/from/process/env", () =>
+        {
+            var options = new NewCopilotClientCmdlet().BuildOptions(() => null);
+
+            Assert.Null(options.Connection);
+        });
+    }
+
+    [Fact]
+    public void BuildOptions_BundledCliResolved_UsesStdioConnection()
+    {
+        var options = new NewCopilotClientCmdlet().BuildOptions(() => "/bundled/copilot");
+
+        var stdio = Assert.IsType<StdioRuntimeConnection>(options.Connection);
+        Assert.Equal("/bundled/copilot", stdio.Path);
+    }
 }
