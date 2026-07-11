@@ -121,7 +121,16 @@ public sealed class NewCopilotSessionCmdlet : SessionConfigCmdletBase
         }
 
         var config = new SessionConfig();
-        ApplyCommonOptions(config);
+        try
+        {
+            ApplyCommonOptions(config);
+        }
+        catch (ArgumentException ex)
+        {
+            ThrowTerminatingError(new ErrorRecord(
+                ex, "InvalidSessionConfig", ErrorCategory.InvalidArgument, null));
+            return;
+        }
         if (SessionId is not null) config.SessionId = SessionId;
 
         try
@@ -160,7 +169,16 @@ public sealed class ResumeCopilotSessionCmdlet : SessionConfigCmdletBase
         }
 
         var config = new ResumeSessionConfig();
-        ApplyCommonOptions(config);
+        try
+        {
+            ApplyCommonOptions(config);
+        }
+        catch (ArgumentException ex)
+        {
+            ThrowTerminatingError(new ErrorRecord(
+                ex, "InvalidSessionConfig", ErrorCategory.InvalidArgument, null));
+            return;
+        }
         if (ContinuePendingWork) config.ContinuePendingWork = true;
 
         try
@@ -386,7 +404,7 @@ internal static class McpServerHelper
         return config;
     }
 
-    private static object? Unwrap(object? value)
+    internal static object? Unwrap(object? value)
         => value is PSObject psObject ? psObject.BaseObject : value;
 
     private static object? GetValue(Hashtable settings, string key)

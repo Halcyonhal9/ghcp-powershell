@@ -62,7 +62,7 @@ public sealed class NewCopilotClientCmdlet : PSCmdlet
             var env = new Dictionary<string, string>();
             foreach (DictionaryEntry entry in Environment)
             {
-                env[entry.Key.ToString()!] = entry.Value?.ToString() ?? string.Empty;
+                env[entry.Key.ToString()!] = McpServerHelper.Unwrap(entry.Value)?.ToString() ?? string.Empty;
             }
             options.Environment = env;
         }
@@ -80,7 +80,17 @@ public sealed class NewCopilotClientCmdlet : PSCmdlet
                 options.Connection = RuntimeConnection.ForStdio(cli);
         }
 
-        var client = new CopilotClient(options);
+        CopilotClient client;
+        try
+        {
+            client = new CopilotClient(options);
+        }
+        catch (Exception ex)
+        {
+            ThrowTerminatingError(new ErrorRecord(
+                ex, "ClientOptionsInvalid", ErrorCategory.InvalidArgument, null));
+            return;
+        }
 
         try
         {

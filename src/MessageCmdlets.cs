@@ -151,7 +151,7 @@ public sealed class SendCopilotMessageCmdlet : PSCmdlet
                 options.Attachments = attachments;
             }
 
-            target.SendAsync(options, _cts.Token).GetAwaiter().GetResult();
+            result.MessageId = target.SendAsync(options, _cts.Token).GetAwaiter().GetResult();
 
             if (!idleSignal.Wait(Timeout, _cts.Token))
             {
