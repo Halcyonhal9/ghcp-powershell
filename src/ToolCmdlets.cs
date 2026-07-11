@@ -59,9 +59,9 @@ public sealed class ScriptBlockToolFunction : AIFunction
     // (see CopilotTool.SkipPermissionKey in the SDK).
     private const string SkipPermissionKey = "skip_permission";
 
-    private readonly JsonElement _schema;
-    private readonly IReadOnlyDictionary<string, object?> _additionalProperties;
-    private readonly PowerShellCallbackRunner _runner;
+    private readonly JsonElement schema;
+    private readonly IReadOnlyDictionary<string, object?> additionalProperties;
+    private readonly PowerShellCallbackRunner runner;
 
     public ScriptBlockToolFunction(
         string name,
@@ -90,9 +90,9 @@ public sealed class ScriptBlockToolFunction : AIFunction
 
         Name = name;
         Description = description;
-        _schema = BuildSchema(scriptBlock);
-        _runner = new PowerShellCallbackRunner(scriptBlock, languageMode);
-        _additionalProperties = skipPermission
+        schema = BuildSchema(scriptBlock);
+        runner = new PowerShellCallbackRunner(scriptBlock, languageMode);
+        additionalProperties = skipPermission
             ? new Dictionary<string, object?> { [SkipPermissionKey] = true }
             : new Dictionary<string, object?>();
     }
@@ -101,14 +101,14 @@ public sealed class ScriptBlockToolFunction : AIFunction
 
     public override string Description { get; }
 
-    public override JsonElement JsonSchema => _schema;
+    public override JsonElement JsonSchema => schema;
 
-    public override IReadOnlyDictionary<string, object?> AdditionalProperties => _additionalProperties;
+    public override IReadOnlyDictionary<string, object?> AdditionalProperties => additionalProperties;
 
     protected override async ValueTask<object?> InvokeCoreAsync(
         AIFunctionArguments arguments, CancellationToken cancellationToken)
     {
-        return await _runner.InvokeTextAsync(
+        return await runner.InvokeTextAsync(
                 arguments.Select(argument =>
                     new KeyValuePair<string, object?>(
                         argument.Key,
@@ -126,7 +126,9 @@ public sealed class ScriptBlockToolFunction : AIFunction
         return element.ValueKind switch
         {
             JsonValueKind.String => element.GetString(),
-            JsonValueKind.Number => element.TryGetInt64(out var l) ? l : (object)element.GetDouble(),
+            JsonValueKind.Number => element.TryGetInt64(out var integer)
+                ? integer
+                : (object)element.GetDouble(),
             JsonValueKind.True => true,
             JsonValueKind.False => false,
             JsonValueKind.Null or JsonValueKind.Undefined => null,

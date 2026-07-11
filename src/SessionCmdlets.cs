@@ -197,7 +197,7 @@ public abstract class SessionConfigCmdletBase : PSCmdlet
         if (MaxAiCredits is not null) config.SessionLimits = new SessionLimitsConfig { MaxAiCredits = MaxAiCredits };
         if (McpServers is not null) config.McpServers = McpServerHelper.Build(McpServers);
         if (McpOAuthTokenStorage is not null) config.McpOAuthTokenStorage = McpOAuthTokenStorage;
-        config.OnMcpAuthRequest = BuildOptionalCallback(
+        config.OnMcpAuthRequest = BuildCallback(
             OnMcpAuthRequest,
             OnMcpAuthRequestDelegate,
             nameof(OnMcpAuthRequest),
@@ -206,18 +206,18 @@ public abstract class SessionConfigCmdletBase : PSCmdlet
         if (Providers is not null) config.Providers = new List<NamedProviderConfig>(Providers);
         if (ProviderModels is not null) config.Models = new List<ProviderModelConfig>(ProviderModels);
         if (Hooks is not null) config.Hooks = Hooks;
-        config.OnElicitationRequest = BuildRequiredCallback(
+        config.OnElicitationRequest = BuildCallback(
             OnElicitationRequest,
             OnElicitationRequestDelegate,
             nameof(OnElicitationRequest),
             runner => context => runner.InvokeRequiredAsync<ElicitationResult>(context));
-        config.OnExitPlanModeRequest = BuildRequiredCallback(
+        config.OnExitPlanModeRequest = BuildCallback(
             OnExitPlanModeRequest,
             OnExitPlanModeRequestDelegate,
             nameof(OnExitPlanModeRequest),
             runner => (request, invocation) =>
                 runner.InvokeRequiredAsync<ExitPlanModeResult>(request, invocation));
-        config.OnAutoModeSwitchRequest = BuildRequiredCallback(
+        config.OnAutoModeSwitchRequest = BuildCallback(
             OnAutoModeSwitchRequest,
             OnAutoModeSwitchRequestDelegate,
             nameof(OnAutoModeSwitchRequest),
@@ -227,26 +227,6 @@ public abstract class SessionConfigCmdletBase : PSCmdlet
             config.RemoteSession = new GitHub.Copilot.Rpc.RemoteSessionMode(RemoteSession);
         if (Commands is not null) config.Commands = new List<CommandDefinition>(Commands);
         if (Tool is { Length: > 0 }) config.Tools = new List<AIFunctionDeclaration>(Tool);
-    }
-
-    private TDelegate? BuildOptionalCallback<TDelegate>(
-        ScriptBlock? scriptBlock,
-        TDelegate? callback,
-        string parameterName,
-        Func<PowerShellCallbackRunner, TDelegate> build)
-        where TDelegate : Delegate
-    {
-        return BuildCallback(scriptBlock, callback, parameterName, build);
-    }
-
-    private TDelegate? BuildRequiredCallback<TDelegate>(
-        ScriptBlock? scriptBlock,
-        TDelegate? callback,
-        string parameterName,
-        Func<PowerShellCallbackRunner, TDelegate> build)
-        where TDelegate : Delegate
-    {
-        return BuildCallback(scriptBlock, callback, parameterName, build);
     }
 
     private TDelegate? BuildCallback<TDelegate>(

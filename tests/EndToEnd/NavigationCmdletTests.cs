@@ -30,7 +30,9 @@ public class NavigationCmdletTests : IAsyncLifetime
     {
         ps = PowerShell.Create();
         ps.AddCommand("Import-Module")
-            .AddParameter("Name", NavigationE2eModule.ResolveAssembly())
+            .AddParameter(
+                "Name",
+                Path.ChangeExtension(E2eModule.ResolveManifest(), ".dll"))
             .AddParameter("Force", true);
         ps.Invoke();
         Assert.False(ps.HadErrors, string.Join("; ", ps.Streams.Error));
@@ -277,35 +279,5 @@ public class NavigationCmdletTests : IAsyncLifetime
         ps.Commands.Clear();
         ps.Streams.Error.Clear();
         ps.Streams.Warning.Clear();
-    }
-}
-
-internal static class NavigationE2eModule
-{
-    internal static string ResolveAssembly()
-    {
-        var repoRoot = Path.GetFullPath(
-            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
-        var assembly = Path.Combine(repoRoot, "out", "CopilotCmdlets.dll");
-        const string publishHint =
-            "Publish first: dotnet publish src/CopilotCmdlets.csproj -c Release -o out";
-
-        if (!File.Exists(assembly))
-        {
-            throw new InvalidOperationException(
-                $"Published assembly not found at {assembly}. {publishHint}");
-        }
-
-        var publishedAt = File.GetLastWriteTimeUtc(assembly);
-        var newerSource = Directory
-            .EnumerateFiles(Path.Combine(repoRoot, "src"), "*.cs")
-            .FirstOrDefault(path => File.GetLastWriteTimeUtc(path) > publishedAt);
-        if (newerSource is not null)
-        {
-            throw new InvalidOperationException(
-                $"Published assembly is stale: {Path.GetFileName(newerSource)} is newer than out/CopilotCmdlets.dll. {publishHint}");
-        }
-
-        return assembly;
     }
 }
