@@ -56,3 +56,10 @@ nunit-*.xml
 
 CopilotCmdlets-*.zip
 .env
+
+# Local agent tooling (skills, prompts, plugins). Kept out of this open-source
+# repo: the workflow files may reference closed-source repos and internal
+# infrastructure used during development.
+.claude/
+.github/skills/
+.github/prompts/
