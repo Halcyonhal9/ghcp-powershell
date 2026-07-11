@@ -15,9 +15,7 @@ public class ClientLifecycleTests : IAsyncLifetime
     public Task InitializeAsync()
     {
         ps = PowerShell.Create();
-        var modulePath = Path.Combine(
-            AppContext.BaseDirectory, "..", "..", "..", "..", "out", "CopilotCmdlets.psd1");
-        ps.AddCommand("Import-Module").AddParameter("Name", Path.GetFullPath(modulePath));
+        ps.AddCommand("Import-Module").AddParameter("Name", E2eModule.ResolveManifest());
         ps.Invoke();
         ps.Commands.Clear();
         return Task.CompletedTask;

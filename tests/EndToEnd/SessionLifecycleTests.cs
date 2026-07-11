@@ -16,9 +16,7 @@ public class SessionLifecycleTests : IAsyncLifetime
     public Task InitializeAsync()
     {
         ps = PowerShell.Create();
-        var modulePath = Path.Combine(
-            AppContext.BaseDirectory, "..", "..", "..", "..", "out", "CopilotCmdlets.psd1");
-        ps.AddCommand("Import-Module").AddParameter("Name", Path.GetFullPath(modulePath));
+        ps.AddCommand("Import-Module").AddParameter("Name", E2eModule.ResolveManifest());
         ps.Invoke();
         ps.Commands.Clear();
 
@@ -70,7 +68,9 @@ public class SessionLifecycleTests : IAsyncLifetime
     {
         ps.AddCommand("New-CopilotSession")
             .AddParameter("SessionId", testSessionId)
-            .AddParameter("AutoApprove", true);
+            .AddParameter("AutoApprove", true)
+            .AddParameter("AvailableTools", Array.Empty<string>())
+            .AddParameter("MaxAiCredits", 50);
 
         var results = ps.Invoke();
 
@@ -85,7 +85,9 @@ public class SessionLifecycleTests : IAsyncLifetime
     {
         ps.AddCommand("New-CopilotSession")
             .AddParameter("SessionId", testSessionId)
-            .AddParameter("AutoApprove", true);
+            .AddParameter("AutoApprove", true)
+            .AddParameter("AvailableTools", Array.Empty<string>())
+            .AddParameter("MaxAiCredits", 50);
         ps.Invoke();
         ps.Commands.Clear();
 
@@ -106,7 +108,9 @@ public class SessionLifecycleTests : IAsyncLifetime
     {
         ps.AddCommand("New-CopilotSession")
             .AddParameter("SessionId", testSessionId)
-            .AddParameter("AutoApprove", true);
+            .AddParameter("AutoApprove", true)
+            .AddParameter("AvailableTools", Array.Empty<string>())
+            .AddParameter("MaxAiCredits", 50);
         ps.Invoke();
         ps.Commands.Clear();
 
@@ -131,7 +135,9 @@ public class SessionLifecycleTests : IAsyncLifetime
     {
         ps.AddCommand("New-CopilotSession")
             .AddParameter("SessionId", testSessionId)
-            .AddParameter("AutoApprove", true);
+            .AddParameter("AutoApprove", true)
+            .AddParameter("AvailableTools", Array.Empty<string>())
+            .AddParameter("MaxAiCredits", 50);
         ps.Invoke();
         ps.Commands.Clear();
 
@@ -156,7 +162,9 @@ public class SessionLifecycleTests : IAsyncLifetime
     {
         ps.AddCommand("New-CopilotSession")
             .AddParameter("SessionId", testSessionId)
-            .AddParameter("AutoApprove", true);
+            .AddParameter("AutoApprove", true)
+            .AddParameter("AvailableTools", Array.Empty<string>())
+            .AddParameter("MaxAiCredits", 50);
         ps.Invoke();
         ps.Commands.Clear();
 

@@ -16,9 +16,7 @@ public class ConversationTests : IAsyncLifetime
     public Task InitializeAsync()
     {
         ps = PowerShell.Create();
-        var modulePath = Path.Combine(
-            AppContext.BaseDirectory, "..", "..", "..", "..", "out", "CopilotCmdlets.psd1");
-        ps.AddCommand("Import-Module").AddParameter("Name", Path.GetFullPath(modulePath));
+        ps.AddCommand("Import-Module").AddParameter("Name", E2eModule.ResolveManifest());
         ps.Invoke();
         ps.Commands.Clear();
 
@@ -26,9 +24,13 @@ public class ConversationTests : IAsyncLifetime
         ps.Invoke();
         ps.Commands.Clear();
 
+        // Text-only tests: expose no tools (guards against auto-approved
+        // tool calls on the host) and cap spend per session.
         ps.AddCommand("New-CopilotSession")
             .AddParameter("SessionId", testSessionId)
-            .AddParameter("AutoApprove", true);
+            .AddParameter("AutoApprove", true)
+            .AddParameter("AvailableTools", Array.Empty<string>())
+            .AddParameter("MaxAiCredits", 50);
         ps.Invoke();
         ps.Commands.Clear();
 

@@ -15,9 +15,7 @@ public class NewFeatureTests : IAsyncLifetime
     public Task InitializeAsync()
     {
         ps = PowerShell.Create();
-        var modulePath = Path.Combine(
-            AppContext.BaseDirectory, "..", "..", "..", "..", "out", "CopilotCmdlets.psd1");
-        ps.AddCommand("Import-Module").AddParameter("Name", Path.GetFullPath(modulePath));
+        ps.AddCommand("Import-Module").AddParameter("Name", E2eModule.ResolveManifest());
         ps.Invoke();
         ps.Commands.Clear();
 
@@ -72,7 +70,7 @@ public class NewFeatureTests : IAsyncLifetime
             $tool = New-CopilotTool -Name 'get_magic_word' -Description 'Returns the magic word' -ScriptBlock {
                 'The magic word is xyzzy-42'
             } -SkipPermission
-            $null = New-CopilotSession -AutoApprove -Tool $tool
+            $null = New-CopilotSession -AutoApprove -MaxAiCredits 50 -Tool $tool
             Send-CopilotMessage 'Call the get_magic_word tool and reply with only the magic word it returns.' -Timeout (New-TimeSpan -Seconds 120)
         ");
         var results = ps.Invoke();
@@ -108,7 +106,7 @@ public class NewFeatureTests : IAsyncLifetime
     public void SendCopilotMessageAsync_ReceiveReturnsTaggedResult()
     {
         ps.AddScript(@"
-            $null = New-CopilotSession -AutoApprove
+            $null = New-CopilotSession -AutoApprove -AvailableTools @() -MaxAiCredits 50
             $handle = Send-CopilotMessageAsync 'Say exactly: async-ok' -Tag 'tag-42' -Mode enqueue
             $handle | Receive-CopilotAsyncResult -Timeout (New-TimeSpan -Seconds 120)
         ");
@@ -132,8 +130,11 @@ public class NewFeatureTests : IAsyncLifetime
         File.WriteAllText(attachmentPath, "The secret phrase is quartz-77.");
         try
         {
+            // Unlike blobs (inlined into the prompt), file attachments are
+            // surfaced as references the model reads via the read tool — so
+            // this session keeps the default tool set.
             ps.AddScript($@"
-                $null = New-CopilotSession -AutoApprove
+                $null = New-CopilotSession -AutoApprove -MaxAiCredits 50
                 Send-CopilotMessage 'What is the secret phrase in the attached file? Reply with only the phrase.' -Attachment '{attachmentPath}' -Timeout (New-TimeSpan -Seconds 120)
             ");
             var results = ps.Invoke();
@@ -155,7 +156,7 @@ public class NewFeatureTests : IAsyncLifetime
     public void SendCopilotMessage_BlobAttachmentIsReadable()
     {
         ps.AddScript(@"
-            $null = New-CopilotSession -AutoApprove
+            $null = New-CopilotSession -AutoApprove -AvailableTools @() -MaxAiCredits 50
             $blob = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes('The magic word is zebra-99.'))
             Send-CopilotMessage 'What is the magic word in the attached document? Reply with only the word.' -BlobData $blob -BlobMimeType 'text/plain' -Timeout (New-TimeSpan -Seconds 120)
         ");
@@ -176,7 +177,7 @@ public class NewFeatureTests : IAsyncLifetime
         // Start a long task without waiting, abort it, then confirm the
         // session returns to idle well before the task could finish.
         ps.AddScript(@"
-            $null = New-CopilotSession -AutoApprove
+            $null = New-CopilotSession -AutoApprove -AvailableTools @() -MaxAiCredits 50
             $handle = Send-CopilotMessageAsync 'Count from 1 to 500, one number per line, no shortcuts.'
             Start-Sleep -Seconds 3
             Stop-CopilotMessage
@@ -197,12 +198,33 @@ public class NewFeatureTests : IAsyncLifetime
     }
 
     [Fact]
+    public void ReceiveAsyncResult_DisposeSessionClearsModuleDefault()
+    {
+        // After -DisposeSession disposes the module-default session, later
+        // cmdlets must fail with the clean "no session" error rather than
+        // hitting a disposed session.
+        ps.AddScript(@"
+            $null = New-CopilotSession -AutoApprove -AvailableTools @() -MaxAiCredits 50
+            $handle = Send-CopilotMessageAsync 'Say exactly: bye'
+            $null = $handle | Receive-CopilotAsyncResult -Timeout (New-TimeSpan -Seconds 120) -DisposeSession
+            Send-CopilotMessage 'this should fail cleanly'
+        ");
+        ps.Invoke();
+
+        Assert.True(ps.HadErrors, "expected a terminating error after the default session was disposed");
+        var error = ps.Streams.Error.ReadAll().Last();
+        Assert.Contains("No Copilot session available", error.Exception.Message);
+    }
+
+    [Fact]
     public void McpServer_ToolRoundTrip()
     {
-        // Requires npx (Node) on PATH: spawns @modelcontextprotocol/server-everything.
+        // Requires npx (Node) on PATH. The server version is pinned: npx -y
+        // executes the package, so an unpinned spec would run whatever is
+        // latest on npm at test time (supply-chain + reproducibility risk).
         ps.AddScript(@"
-            $null = New-CopilotSession -AutoApprove -McpServers @{
-                everything = @{ Command = 'npx'; Args = @('-y', '@modelcontextprotocol/server-everything'); Tools = @('echo') }
+            $null = New-CopilotSession -AutoApprove -MaxAiCredits 50 -McpServers @{
+                everything = @{ Command = 'npx'; Args = @('-y', '@modelcontextprotocol/server-everything@2026.7.4'); Tools = @('echo') }
             }
             Send-CopilotMessage ""Call the echo tool with message 'mcp-roundtrip-ok' and reply with only the text it returned."" -Timeout (New-TimeSpan -Seconds 180)
         ");

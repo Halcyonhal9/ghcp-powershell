@@ -221,6 +221,14 @@ public sealed class ReceiveCopilotAsyncResultCmdlet : PSCmdlet
             {
                 try { asyncResult.Session.DisposeAsync().GetAwaiter().GetResult(); }
                 catch { /* best-effort cleanup */ }
+
+                // If this was the module-default session, clear it so later
+                // cmdlets fail with a clean "no session" error instead of
+                // hitting a disposed session.
+                if (ReferenceEquals(asyncResult.Session, ModuleState.CurrentSession))
+                {
+                    ModuleState.CurrentSession = null;
+                }
             }
         }
     }
