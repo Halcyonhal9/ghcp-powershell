@@ -1,5 +1,5 @@
 using System.Management.Automation;
-using GitHub.Copilot.SDK;
+using GitHub.Copilot;
 using Xunit;
 
 using CopilotCmdlets;
@@ -7,6 +7,7 @@ using CopilotCmdlets;
 namespace CopilotCmdlets.Tests.EndToEnd;
 
 [Trait("Category", "EndToEnd")]
+[Collection("EndToEnd")]
 public class ClientLifecycleTests : IAsyncLifetime
 {
     private PowerShell ps = null!;

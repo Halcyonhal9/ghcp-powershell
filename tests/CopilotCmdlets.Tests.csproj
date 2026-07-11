@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <!-- GHCP001: SDK members marked [Experimental] (e.g. usage cost, citations). -->
+    <NoWarn>$(NoWarn);GHCP001</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,7 +15,8 @@
     <PackageReference Include="xunit" Version="2.*" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.*" />
     <PackageReference Include="NSubstitute" Version="5.*" />
-    <PackageReference Include="System.Management.Automation" Version="7.5.*" />
+    <!-- Full PowerShell runtime so hosted runspaces (ScriptBlock tools) work in the test host. -->
+    <PackageReference Include="Microsoft.PowerShell.SDK" Version="7.5.*" />
   </ItemGroup>
 
   <ItemGroup>

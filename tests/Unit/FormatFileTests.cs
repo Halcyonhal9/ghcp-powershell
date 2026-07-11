@@ -49,10 +49,10 @@ public class FormatFileTests
     }
 
     [Theory]
-    [InlineData("ModelInfo_Table", "GitHub.Copilot.SDK.ModelInfo")]
-    [InlineData("ModelInfo_List", "GitHub.Copilot.SDK.ModelInfo")]
-    [InlineData("SessionMetadata_Table", "GitHub.Copilot.SDK.SessionMetadata")]
-    [InlineData("SessionMetadata_List", "GitHub.Copilot.SDK.SessionMetadata")]
+    [InlineData("ModelInfo_Table", "GitHub.Copilot.ModelInfo")]
+    [InlineData("ModelInfo_List", "GitHub.Copilot.ModelInfo")]
+    [InlineData("SessionMetadata_Table", "GitHub.Copilot.SessionMetadata")]
+    [InlineData("SessionMetadata_List", "GitHub.Copilot.SessionMetadata")]
     public void FormatFile_ContainsExpectedView(string viewName, string typeName)
     {
         var views = LoadFormatDoc().Descendants("View");

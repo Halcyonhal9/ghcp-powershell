@@ -1,5 +1,5 @@
 using System.Management.Automation;
-using GitHub.Copilot.SDK;
+using GitHub.Copilot;
 using Xunit;
 
 using CopilotCmdlets;
@@ -7,6 +7,7 @@ using CopilotCmdlets;
 namespace CopilotCmdlets.Tests.Unit;
 
 [Trait("Category", "Unit")]
+[Collection("ModuleState")]
 public class CompleterTests
 {
     [Fact]
@@ -120,12 +121,13 @@ public class CompleterTests
             "New-CopilotClient", "LogLevel", "", null!, new System.Collections.Hashtable())
             .ToList();
 
-        Assert.Equal(5, results.Count);
-        Assert.Contains(results, r => r.CompletionText == "trace");
-        Assert.Contains(results, r => r.CompletionText == "debug");
-        Assert.Contains(results, r => r.CompletionText == "info");
-        Assert.Contains(results, r => r.CompletionText == "warn");
+        Assert.Equal(6, results.Count);
+        Assert.Contains(results, r => r.CompletionText == "none");
         Assert.Contains(results, r => r.CompletionText == "error");
+        Assert.Contains(results, r => r.CompletionText == "warning");
+        Assert.Contains(results, r => r.CompletionText == "info");
+        Assert.Contains(results, r => r.CompletionText == "debug");
+        Assert.Contains(results, r => r.CompletionText == "all");
     }
 
     [Fact]

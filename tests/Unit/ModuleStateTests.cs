@@ -1,5 +1,5 @@
 using System.Management.Automation;
-using GitHub.Copilot.SDK;
+using GitHub.Copilot;
 using Xunit;
 
 using CopilotCmdlets;
@@ -7,6 +7,7 @@ using CopilotCmdlets;
 namespace CopilotCmdlets.Tests.Unit;
 
 [Trait("Category", "Unit")]
+[Collection("ModuleState")]
 public class ModuleStateTests : IDisposable
 {
     public ModuleStateTests()
@@ -33,7 +34,7 @@ public class ModuleStateTests : IDisposable
     [Fact]
     public void RequireClient_ReturnsExplicitClientWhenProvided()
     {
-        var explicitClient = new CopilotClient(new CopilotClientOptions { AutoStart = false });
+        var explicitClient = new CopilotClient(new CopilotClientOptions());
         try
         {
             var result = ModuleState.RequireClient(explicitClient);
@@ -48,7 +49,7 @@ public class ModuleStateTests : IDisposable
     [Fact]
     public void RequireClient_ReturnsModuleDefaultWhenExplicitIsNull()
     {
-        var defaultClient = new CopilotClient(new CopilotClientOptions { AutoStart = false });
+        var defaultClient = new CopilotClient(new CopilotClientOptions());
         try
         {
             ModuleState.Client = defaultClient;
@@ -64,8 +65,8 @@ public class ModuleStateTests : IDisposable
     [Fact]
     public void RequireClient_PrefersExplicitOverDefault()
     {
-        var defaultClient = new CopilotClient(new CopilotClientOptions { AutoStart = false });
-        var explicitClient = new CopilotClient(new CopilotClientOptions { AutoStart = false });
+        var defaultClient = new CopilotClient(new CopilotClientOptions());
+        var explicitClient = new CopilotClient(new CopilotClientOptions());
         try
         {
             ModuleState.Client = defaultClient;
@@ -115,7 +116,7 @@ public class ModuleStateTests : IDisposable
     [Fact]
     public void Client_SetAndGet()
     {
-        var client = new CopilotClient(new CopilotClientOptions { AutoStart = false });
+        var client = new CopilotClient(new CopilotClientOptions());
         try
         {
             Assert.Null(ModuleState.Client);
@@ -131,8 +132,8 @@ public class ModuleStateTests : IDisposable
     [Fact]
     public void Client_CanBeReplacedWithNewInstance()
     {
-        var first = new CopilotClient(new CopilotClientOptions { AutoStart = false });
-        var second = new CopilotClient(new CopilotClientOptions { AutoStart = false });
+        var first = new CopilotClient(new CopilotClientOptions());
+        var second = new CopilotClient(new CopilotClientOptions());
         try
         {
             ModuleState.Client = first;
@@ -164,7 +165,7 @@ public class ModuleStateTests : IDisposable
     [Fact]
     public void TryRequireClient_ReturnsTrueWithExplicitClient()
     {
-        var explicitClient = new CopilotClient(new CopilotClientOptions { AutoStart = false });
+        var explicitClient = new CopilotClient(new CopilotClientOptions());
         try
         {
             var success = ModuleState.TryRequireClient(explicitClient, out var client, out var error);

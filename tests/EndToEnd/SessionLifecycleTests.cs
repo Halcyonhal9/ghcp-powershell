@@ -1,5 +1,5 @@
 using System.Management.Automation;
-using GitHub.Copilot.SDK;
+using GitHub.Copilot;
 using Xunit;
 
 using CopilotCmdlets;
@@ -7,6 +7,7 @@ using CopilotCmdlets;
 namespace CopilotCmdlets.Tests.EndToEnd;
 
 [Trait("Category", "EndToEnd")]
+[Collection("EndToEnd")]
 public class SessionLifecycleTests : IAsyncLifetime
 {
     private PowerShell ps = null!;
@@ -50,6 +51,20 @@ public class SessionLifecycleTests : IAsyncLifetime
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// The Copilot CLI only persists sessions once they contain at least one
+    /// message; empty sessions are not listed and cannot be resumed. Send a
+    /// trivial message so lifecycle operations behave deterministically.
+    /// </summary>
+    private void SendSeedMessage()
+    {
+        ps.AddCommand("Send-CopilotMessage")
+            .AddParameter("Prompt", "Say exactly: ok")
+            .AddParameter("Timeout", TimeSpan.FromSeconds(120));
+        ps.Invoke();
+        ps.Commands.Clear();
+    }
+
     [Fact]
     public void NewCopilotSession_CreatesSession()
     {
@@ -61,7 +76,8 @@ public class SessionLifecycleTests : IAsyncLifetime
 
         Assert.False(ps.HadErrors, string.Join("; ", ps.Streams.Error));
         Assert.Single(results);
-        Assert.IsType<CopilotSession>(results[0].BaseObject);
+        var session = Assert.IsType<CopilotSession>(results[0].BaseObject);
+        Assert.Equal(testSessionId, session.SessionId);
     }
 
     [Fact]
@@ -72,6 +88,8 @@ public class SessionLifecycleTests : IAsyncLifetime
             .AddParameter("AutoApprove", true);
         ps.Invoke();
         ps.Commands.Clear();
+
+        SendSeedMessage();
 
         ps.AddCommand("Get-CopilotSession");
         var results = ps.Invoke();
@@ -91,6 +109,8 @@ public class SessionLifecycleTests : IAsyncLifetime
             .AddParameter("AutoApprove", true);
         ps.Invoke();
         ps.Commands.Clear();
+
+        SendSeedMessage();
 
         ps.AddCommand("Close-CopilotSession");
         ps.Invoke();
@@ -115,6 +135,8 @@ public class SessionLifecycleTests : IAsyncLifetime
         ps.Invoke();
         ps.Commands.Clear();
 
+        SendSeedMessage();
+
         ps.AddCommand("Close-CopilotSession");
         ps.Invoke();
         ps.Commands.Clear();
@@ -137,6 +159,8 @@ public class SessionLifecycleTests : IAsyncLifetime
             .AddParameter("AutoApprove", true);
         ps.Invoke();
         ps.Commands.Clear();
+
+        SendSeedMessage();
 
         ps.AddCommand("Close-CopilotSession");
         ps.Invoke();

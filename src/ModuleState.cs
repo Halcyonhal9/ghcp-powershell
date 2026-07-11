@@ -1,6 +1,7 @@
 using System.Management.Automation;
 using System.Runtime.InteropServices;
-using GitHub.Copilot.SDK;
+using GitHub.Copilot;
+using GitHub.Copilot.Rpc;
 
 namespace CopilotCmdlets;
 
@@ -218,7 +219,7 @@ public sealed class CopilotSessionTransformationAttribute : ArgumentTransformati
 
 internal static class PermissionHandlers
 {
-    internal static readonly PermissionRequestHandler Interactive = (request, invocation) =>
+    internal static readonly Func<PermissionRequest, PermissionInvocation, Task<PermissionDecision>> Interactive = (request, invocation) =>
     {
         var originalColor = Console.ForegroundColor;
         Console.ForegroundColor = ConsoleColor.Yellow;
@@ -229,20 +230,17 @@ internal static class PermissionHandlers
         var response = Console.ReadLine();
         var approved = string.Equals(response?.Trim(), "y", StringComparison.OrdinalIgnoreCase);
 
-        return Task.FromResult(new PermissionRequestResult
-        {
-            Kind = approved
-                ? PermissionRequestResultKind.Approved
-                : PermissionRequestResultKind.Rejected
-        });
+        return Task.FromResult(approved
+            ? PermissionDecision.ApproveOnce()
+            : PermissionDecision.Reject());
     };
 
-    internal static readonly PermissionRequestHandler AutoApprove = PermissionHandler.ApproveAll;
+    internal static readonly Func<PermissionRequest, PermissionInvocation, Task<PermissionDecision>> AutoApprove = PermissionHandler.ApproveAll;
 }
 
 internal static class UserInputHandlers
 {
-    internal static readonly UserInputHandler Interactive = (request, invocation) =>
+    internal static readonly Func<UserInputRequest, UserInputInvocation, Task<UserInputResponse>> Interactive = (request, invocation) =>
     {
         Console.Error.WriteLine($"[Input] {request.Question}");
 

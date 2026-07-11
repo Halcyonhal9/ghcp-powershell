@@ -1,5 +1,5 @@
 using System.Management.Automation;
-using GitHub.Copilot.SDK;
+using GitHub.Copilot;
 using Xunit;
 
 using CopilotCmdlets;

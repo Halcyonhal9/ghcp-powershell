@@ -1,5 +1,5 @@
 using System.Management.Automation;
-using GitHub.Copilot.SDK;
+using GitHub.Copilot;
 using Xunit;
 
 using CopilotCmdlets;
@@ -7,6 +7,7 @@ using CopilotCmdlets;
 namespace CopilotCmdlets.Tests.Unit;
 
 [Trait("Category", "Unit")]
+[Collection("ModuleState")]
 public class ModelCmdletTests
 {
     [Fact]

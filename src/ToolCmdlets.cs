@@ -1,0 +1,247 @@
+using System.Collections;
+using System.Management.Automation;
+using System.Management.Automation.Language;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using Microsoft.Extensions.AI;
+
+namespace CopilotCmdlets;
+
+/// <summary>
+/// New-CopilotTool — wraps a PowerShell ScriptBlock as an SDK custom tool
+/// (Microsoft.Extensions.AI AIFunction) for use with New-CopilotSession -Tool.
+/// The tool's JSON schema is derived from the ScriptBlock's param() block.
+/// </summary>
+[Cmdlet(VerbsCommon.New, "CopilotTool")]
+[OutputType(typeof(AIFunction))]
+public sealed class NewCopilotToolCmdlet : PSCmdlet
+{
+    [Parameter(Mandatory = true, Position = 0)]
+    [ValidatePattern("^[a-zA-Z0-9_-]+$")]
+    public string Name { get; set; } = null!;
+
+    [Parameter(Mandatory = true, Position = 1)]
+    public string Description { get; set; } = null!;
+
+    [Parameter(Mandatory = true, Position = 2)]
+    public ScriptBlock ScriptBlock { get; set; } = null!;
+
+    /// <summary>Run the tool without a permission prompt.</summary>
+    [Parameter]
+    public SwitchParameter SkipPermission { get; set; }
+
+    protected override void EndProcessing()
+    {
+        try
+        {
+            WriteObject(new ScriptBlockToolFunction(Name, Description, ScriptBlock, SkipPermission.IsPresent));
+        }
+        catch (Exception ex)
+        {
+            ThrowTerminatingError(new ErrorRecord(
+                ex, "ToolCreateFailed", ErrorCategory.InvalidArgument, ScriptBlock));
+        }
+    }
+}
+
+/// <summary>
+/// AIFunction implementation backed by a PowerShell ScriptBlock. Each invocation
+/// runs in a fresh runspace, so tools are safe to call from SDK background threads.
+/// </summary>
+public sealed class ScriptBlockToolFunction : AIFunction
+{
+    // Wire keys the SDK reads from AdditionalProperties when registering tools
+    // (see CopilotTool.SkipPermissionKey in the SDK).
+    private const string SkipPermissionKey = "skip_permission";
+
+    private readonly string _scriptText;
+    private readonly JsonElement _schema;
+    private readonly IReadOnlyDictionary<string, object?> _additionalProperties;
+
+    public ScriptBlockToolFunction(string name, string description, ScriptBlock scriptBlock, bool skipPermission = false)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(name);
+        ArgumentNullException.ThrowIfNull(description);
+        ArgumentNullException.ThrowIfNull(scriptBlock);
+
+        Name = name;
+        Description = description;
+        _scriptText = scriptBlock.ToString();
+        _schema = BuildSchema(scriptBlock);
+        _additionalProperties = skipPermission
+            ? new Dictionary<string, object?> { [SkipPermissionKey] = true }
+            : new Dictionary<string, object?>();
+    }
+
+    public override string Name { get; }
+
+    public override string Description { get; }
+
+    public override JsonElement JsonSchema => _schema;
+
+    public override IReadOnlyDictionary<string, object?> AdditionalProperties => _additionalProperties;
+
+    protected override async ValueTask<object?> InvokeCoreAsync(
+        AIFunctionArguments arguments, CancellationToken cancellationToken)
+    {
+        using var ps = PowerShell.Create();
+        ps.AddScript(_scriptText);
+
+        foreach (var (key, value) in arguments)
+        {
+            ps.AddParameter(key, ConvertArgument(value));
+        }
+
+        ps.AddCommand("Out-String");
+
+        using var registration = cancellationToken.Register(() => ps.Stop());
+
+        var output = await ps.InvokeAsync().ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (ps.HadErrors)
+        {
+            var errors = string.Join(Environment.NewLine,
+                ps.Streams.Error.ReadAll().Select(e => e.ToString()));
+            throw new InvalidOperationException(
+                errors.Length > 0 ? errors : $"Tool '{Name}' failed.");
+        }
+
+        var text = string.Concat(output.Select(o => o?.ToString())).Trim();
+        return text;
+    }
+
+    /// <summary>Converts incoming JSON argument values to native PowerShell-friendly types.</summary>
+    internal static object? ConvertArgument(object? value)
+    {
+        if (value is not JsonElement element)
+            return value;
+
+        return element.ValueKind switch
+        {
+            JsonValueKind.String => element.GetString(),
+            JsonValueKind.Number => element.TryGetInt64(out var l) ? l : (object)element.GetDouble(),
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Null or JsonValueKind.Undefined => null,
+            JsonValueKind.Array => element.EnumerateArray().Select(e => ConvertArgument(e)).ToArray(),
+            JsonValueKind.Object => ConvertObject(element),
+            _ => element.GetRawText()
+        };
+
+        static Hashtable ConvertObject(JsonElement element)
+        {
+            var table = new Hashtable();
+            foreach (var property in element.EnumerateObject())
+            {
+                table[property.Name] = ConvertArgument(property.Value);
+            }
+            return table;
+        }
+    }
+
+    /// <summary>Builds a JSON schema from the ScriptBlock's param() block.</summary>
+    internal static JsonElement BuildSchema(ScriptBlock scriptBlock)
+    {
+        var properties = new JsonObject();
+        var required = new JsonArray();
+
+        var paramBlock = ((ScriptBlockAst)scriptBlock.Ast).ParamBlock;
+        if (paramBlock is not null)
+        {
+            foreach (var parameter in paramBlock.Parameters)
+            {
+                var name = parameter.Name.VariablePath.UserPath;
+                var property = new JsonObject
+                {
+                    ["type"] = MapType(parameter.StaticType)
+                };
+
+                if (GetHelpMessage(parameter) is { } helpMessage)
+                    property["description"] = helpMessage;
+
+                if (parameter.StaticType.IsArray)
+                {
+                    var elementType = parameter.StaticType.GetElementType();
+                    if (elementType is not null && elementType != typeof(object))
+                        property["items"] = new JsonObject { ["type"] = MapType(elementType) };
+                }
+
+                properties[name] = property;
+
+                if (IsMandatory(parameter))
+                    required.Add(name);
+            }
+        }
+
+        var schema = new JsonObject
+        {
+            ["type"] = "object",
+            ["properties"] = properties
+        };
+        if (required.Count > 0)
+            schema["required"] = required;
+
+        return JsonSerializer.SerializeToElement(schema, JsonContext.Default.JsonObject);
+    }
+
+    private static string MapType(Type type)
+    {
+        if (type == typeof(SwitchParameter)) return "boolean";
+        if (type.IsArray || typeof(IList).IsAssignableFrom(type)) return "array";
+        if (typeof(IDictionary).IsAssignableFrom(type)) return "object";
+
+        return Type.GetTypeCode(type) switch
+        {
+            TypeCode.Boolean => "boolean",
+            TypeCode.Byte or TypeCode.SByte or TypeCode.Int16 or TypeCode.UInt16 or
+            TypeCode.Int32 or TypeCode.UInt32 or TypeCode.Int64 or TypeCode.UInt64 => "integer",
+            TypeCode.Single or TypeCode.Double or TypeCode.Decimal => "number",
+            _ => "string"
+        };
+    }
+
+    private static bool IsMandatory(ParameterAst parameter)
+    {
+        foreach (var attribute in parameter.Attributes.OfType<AttributeAst>())
+        {
+            if (attribute.TypeName.GetReflectionAttributeType() != typeof(ParameterAttribute))
+                continue;
+
+            foreach (var argument in attribute.NamedArguments)
+            {
+                if (!argument.ArgumentName.Equals("Mandatory", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                if (argument.ExpressionOmitted)
+                    return true;
+
+                return argument.Argument is VariableExpressionAst variable &&
+                       variable.VariablePath.UserPath.Equals("true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+        return false;
+    }
+
+    private static string? GetHelpMessage(ParameterAst parameter)
+    {
+        foreach (var attribute in parameter.Attributes.OfType<AttributeAst>())
+        {
+            if (attribute.TypeName.GetReflectionAttributeType() != typeof(ParameterAttribute))
+                continue;
+
+            foreach (var argument in attribute.NamedArguments)
+            {
+                if (argument.ArgumentName.Equals("HelpMessage", StringComparison.OrdinalIgnoreCase) &&
+                    argument.Argument is StringConstantExpressionAst constant)
+                {
+                    return constant.Value;
+                }
+            }
+        }
+        return null;
+    }
+}
+
+[System.Text.Json.Serialization.JsonSerializable(typeof(JsonObject))]
+internal sealed partial class JsonContext : System.Text.Json.Serialization.JsonSerializerContext;

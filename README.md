@@ -107,16 +107,18 @@ Stop-CopilotClient
 | Cmdlet | Purpose | Common parameters |
 | --- | --- | --- |
 | `Connect-Copilot` | Launches the Copilot CLI for interactive commands such as `/login`. | `-CliPath`, `-ArgumentList`, `-Force` |
-| `New-CopilotClient` | Starts a Copilot SDK client and stores it as the module default. | `-GitHubToken`, `-CliPath`, `-CliUrl`, `-LogLevel`, `-OtlpEndpoint`, `-TelemetrySourceName` |
+| `New-CopilotClient` | Starts a Copilot SDK client and stores it as the module default. | `-GitHubToken`, `-CliPath`, `-CliUrl`, `-LogLevel`, `-OtlpEndpoint`, `-TelemetrySourceName`, `-WorkingDirectory`, `-Environment`, `-UseLoggedInUser` |
 | `Test-CopilotConnection` | Pings the Copilot CLI server through the current or supplied client. | `-Client`, `-Message` |
+| `Get-CopilotStatus` | Returns the Copilot CLI version and protocol version. | `-Client` |
+| `Get-CopilotAuthStatus` | Returns authentication state, auth type, and login. | `-Client` |
 | `Stop-CopilotClient` | Stops and disposes the current or supplied client. | `-Client`, `-Force`, `-WhatIf`, `-Confirm` |
 
 ### Sessions
 
 | Cmdlet | Purpose | Common parameters |
 | --- | --- | --- |
-| `New-CopilotSession` | Creates a new Copilot session and stores it as the module default. | `-Client`, `-SessionId`, `-Model`, `-SystemMessage`, `-SystemMessageMode`, `-SystemMessageSections`, `-ReasoningEffort`, `-AutoApprove`, `-InfiniteSessions`, `-WorkingDirectory`, `-AvailableTools`, `-ExcludedTools`, `-EnableConfigDiscovery`, `-Agent`, `-SkillDirectories` |
-| `Resume-CopilotSession` | Resumes an existing session by ID and stores it as the module default. | `-SessionId`, `-Client`, `-Model`, `-AutoApprove`, `-SystemMessage`, `-SystemMessageMode`, `-SystemMessageSections`, `-ReasoningEffort`, `-WorkingDirectory`, `-EnableConfigDiscovery`, `-Agent`, `-SkillDirectories` |
+| `New-CopilotSession` | Creates a new Copilot session and stores it as the module default. | `-Client`, `-SessionId`, `-Model`, `-SystemMessage`, `-SystemMessageMode`, `-SystemMessageSections`, `-ReasoningEffort`, `-AutoApprove`, `-InfiniteSessions`, `-WorkingDirectory`, `-AvailableTools`, `-ExcludedTools`, `-EnableConfigDiscovery`, `-Agent`, `-SkillDirectories`, `-DisabledSkills`, `-EnableCitations`, `-ExcludedBuiltInAgents`, `-MaxAiCredits`, `-McpServers`, `-Tool` |
+| `Resume-CopilotSession` | Resumes an existing session by ID and stores it as the module default. | `-SessionId`, `-ContinuePendingWork`, plus the same configuration parameters as `New-CopilotSession` |
 | `Get-CopilotSession` | Lists sessions or returns metadata for one session. | `-SessionId`, `-Client` |
 | `Close-CopilotSession` | Closes a session without deleting its saved state. | `-Session` |
 | `Remove-CopilotSession` | Permanently deletes a saved session. | `-SessionId`, `-Client`, `-WhatIf`, `-Confirm` |
@@ -125,10 +127,11 @@ Stop-CopilotClient
 
 | Cmdlet | Purpose | Common parameters |
 | --- | --- | --- |
-| `Send-CopilotMessage` | Sends a prompt, streams assistant output, and returns a `CopilotMessageResult`. | `-Prompt`, `-Session`, `-Attachment`, `-BlobData`, `-BlobMimeType`, `-Timeout` |
+| `Send-CopilotMessage` | Sends a prompt, streams assistant output, and returns a `CopilotMessageResult`. | `-Prompt`, `-Session`, `-Attachment`, `-BlobData`, `-BlobMimeType`, `-Mode`, `-DisplayPrompt`, `-Timeout` |
 | `Get-CopilotMessage` | Retrieves conversation events from the current or supplied session. | `-Session` |
-| `Send-CopilotMessageAsync` | Sends a prompt and immediately returns a `CopilotAsyncResult` handle. | `-Prompt`, `-Session`, `-Tag`, `-Attachment`, `-BlobData`, `-BlobMimeType` |
+| `Send-CopilotMessageAsync` | Sends a prompt and immediately returns a `CopilotAsyncResult` handle. | `-Prompt`, `-Session`, `-Tag`, `-Attachment`, `-BlobData`, `-BlobMimeType`, `-Mode`, `-DisplayPrompt` |
 | `Receive-CopilotAsyncResult` | Waits for an async message handle and returns a `CopilotMessageResult`. | `-Result`, `-Timeout`, `-DisposeSession` |
+| `Stop-CopilotMessage` | Aborts the session's in-flight processing. | `-Session` |
 
 Synchronous and async message sends support file attachments through `-Attachment`. Inline binary attachments can be supplied with base64 `-BlobData` and an optional `-BlobMimeType`.
 
@@ -151,6 +154,41 @@ Get-CopilotModel | Format-Table Id, Name
 Set-CopilotModel -Model "<model-id>" -ReasoningEffort low
 ```
 
+### Custom tools
+
+`New-CopilotTool` wraps a PowerShell ScriptBlock as a custom tool the model can call during a session. The tool's JSON schema is derived from the ScriptBlock's `param()` block: parameter types map to JSON types, `[Parameter(Mandatory)]` marks required parameters, and `HelpMessage` becomes the parameter description. Each invocation runs in a fresh runspace and the pipeline output (formatted as with `Out-String`) is returned to the model.
+
+| Cmdlet | Purpose | Common parameters |
+| --- | --- | --- |
+| `New-CopilotTool` | Creates a ScriptBlock-backed custom tool for `New-CopilotSession -Tool`. | `-Name`, `-Description`, `-ScriptBlock`, `-SkipPermission` |
+
+```powershell
+$weather = New-CopilotTool -Name "get_weather" -Description "Gets the weather for a city" -ScriptBlock {
+    param(
+        [Parameter(Mandatory, HelpMessage = "City name")] [string] $City,
+        [int] $Days = 1
+    )
+    "Sunny in $City for the next $Days day(s)"
+} -SkipPermission
+
+New-CopilotSession -AutoApprove -Tool $weather
+Send-CopilotMessage "What's the weather in Oslo?"
+```
+
+### MCP servers
+
+Sessions can attach Model Context Protocol servers with `-McpServers`. Each key is a server name; each value is a hashtable with either `Command` (stdio server: optional `Args`, `Env`, `WorkingDirectory`) or `Url` (HTTP server: optional `Headers`), plus optional `Tools` and `Timeout`.
+
+```powershell
+New-CopilotSession -AutoApprove -McpServers @{
+    everything = @{
+        Command = "npx"
+        Args    = @("-y", "@modelcontextprotocol/server-everything")
+        Tools   = @("*")
+    }
+}
+```
+
 ## Default client and session behavior
 
 `New-CopilotClient` stores the created client in module state. Cmdlets that accept `-Client` use that default when `-Client` is omitted.
@@ -165,7 +203,7 @@ Use explicit `-Client` and `-Session` parameters when you want to manage multipl
 # Unit tests (no network required)
 dotnet test tests/CopilotCmdlets.Tests.csproj --filter "Category=Unit"
 
-# End-to-end tests (requires GITHUB_TOKEN and CLI on PATH)
+# End-to-end tests (requires GITHUB_TOKEN and a published module: dotnet publish src/CopilotCmdlets.csproj -c Release -o out)
 dotnet test tests/CopilotCmdlets.Tests.csproj --filter "Category=EndToEnd"
 
 # All tests
