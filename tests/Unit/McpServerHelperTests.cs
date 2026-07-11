@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Management.Automation;
 using GitHub.Copilot;
 using Xunit;
 
@@ -57,6 +58,39 @@ public class McpServerHelperTests
     }
 
     [Fact]
+    public void Build_HttpServerMapsOAuthSettings()
+    {
+        var servers = new Hashtable
+        {
+            ["oauth"] = new Hashtable
+            {
+                ["Url"] = "https://mcp.example.com",
+                ["OauthClientId"] = "client-id",
+                ["OauthPublicClient"] = true,
+                ["OauthGrantType"] = "ClientCredentials"
+            }
+        };
+
+        var config = Assert.IsType<McpHttpServerConfig>(
+            McpServerHelper.Build(servers)["oauth"]);
+
+        Assert.Equal("client-id", config.OauthClientId);
+        Assert.True(config.OauthPublicClient);
+        Assert.Equal(McpHttpServerConfigOauthGrantType.ClientCredentials, config.OauthGrantType);
+    }
+
+    [Fact]
+    public void Build_AcceptsTypedSdkConfig()
+    {
+        var typed = new McpHttpServerConfig { Url = "https://mcp.example.com" };
+        var servers = new Hashtable { ["typed"] = new PSObject(typed) };
+
+        var result = McpServerHelper.Build(servers);
+
+        Assert.Same(typed, result["typed"]);
+    }
+
+    [Fact]
     public void Build_MultipleServers()
     {
         var servers = new Hashtable
@@ -99,7 +133,7 @@ public class McpServerHelperTests
         var servers = new Hashtable { ["bad"] = "not a hashtable" };
 
         var ex = Assert.Throws<ArgumentException>(() => McpServerHelper.Build(servers));
-        Assert.Contains("must be a hashtable", ex.Message);
+        Assert.Contains("McpServerConfig or a hashtable", ex.Message);
     }
 
     [Fact]
@@ -140,6 +174,42 @@ public class McpServerHelperTests
         var result = McpServerHelper.Build(servers);
 
         Assert.Equal(2500, result["s"].Timeout);
+    }
+
+    [Fact]
+    public void Build_RejectsInvalidOAuthBoolean()
+    {
+        var servers = new Hashtable
+        {
+            ["s"] = new Hashtable
+            {
+                ["Url"] = "https://mcp.example.com",
+                ["OauthPublicClient"] = "sometimes"
+            }
+        };
+
+        var error = Assert.Throws<ArgumentException>(
+            () => McpServerHelper.Build(servers));
+
+        Assert.Contains("OauthPublicClient", error.Message);
+    }
+
+    [Fact]
+    public void Build_RejectsInvalidOAuthGrantType()
+    {
+        var servers = new Hashtable
+        {
+            ["s"] = new Hashtable
+            {
+                ["Url"] = "https://mcp.example.com",
+                ["OauthGrantType"] = "device-code"
+            }
+        };
+
+        var error = Assert.Throws<ArgumentException>(
+            () => McpServerHelper.Build(servers));
+
+        Assert.Contains("OauthGrantType", error.Message);
     }
 
     [Fact]

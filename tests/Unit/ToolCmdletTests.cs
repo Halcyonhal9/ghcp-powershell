@@ -227,5 +227,20 @@ public class ToolCmdletTests
         Assert.Equal("1\n2\n3", result?.ToString()?.ReplaceLineEndings("\n"));
     }
 
+    [Fact]
+    public async Task InvokeAsync_PreservesConstrainedLanguageMode()
+    {
+        var tool = new ScriptBlockToolFunction(
+            "restricted",
+            "Preserves language mode",
+            ScriptBlock.Create("[System.IO.File]::Exists('.')"),
+            languageMode: PSLanguageMode.ConstrainedLanguage);
+
+        var error = await Assert.ThrowsAnyAsync<Exception>(
+            async () => await tool.InvokeAsync(new AIFunctionArguments()));
+
+        Assert.Contains("language mode", error.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static JsonElement Parse(string json) => JsonDocument.Parse(json).RootElement;
 }

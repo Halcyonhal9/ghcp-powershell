@@ -69,6 +69,10 @@ public sealed class SendCopilotMessageCmdlet : PSCmdlet
     public string? DisplayPrompt { get; set; }
 
     [Parameter]
+    [ArgumentCompleter(typeof(AgentModeCompleter))]
+    public AgentMode? AgentMode { get; set; }
+
+    [Parameter]
     public TimeSpan Timeout { get; set; } = TimeSpan.FromMinutes(5);
 
     protected override void StopProcessing()
@@ -142,15 +146,13 @@ public sealed class SendCopilotMessageCmdlet : PSCmdlet
 
         try
         {
-            var options = new MessageOptions { Prompt = Prompt };
-            if (Mode is not null) options.Mode = Mode;
-            if (DisplayPrompt is not null) options.DisplayPrompt = DisplayPrompt;
-
             var attachments = AttachmentHelper.Build(Attachment, BlobData, BlobMimeType);
-            if (attachments is not null)
-            {
-                options.Attachments = attachments;
-            }
+            var options = MessageOptionsHelper.Build(
+                Prompt,
+                Mode,
+                DisplayPrompt,
+                AgentMode,
+                attachments);
 
             result.MessageId = target.SendAsync(options, _cts.Token).GetAwaiter().GetResult();
 
@@ -244,6 +246,24 @@ public sealed class StopCopilotMessageCmdlet : PSCmdlet
             ThrowTerminatingError(new ErrorRecord(
                 ex, "AbortFailed", ErrorCategory.InvalidOperation, target));
         }
+    }
+}
+
+internal static class MessageOptionsHelper
+{
+    internal static MessageOptions Build(
+        string prompt,
+        string? mode,
+        string? displayPrompt,
+        AgentMode? agentMode,
+        List<GitHub.Copilot.Attachment>? attachments)
+    {
+        var options = new MessageOptions { Prompt = prompt };
+        if (mode is not null) options.Mode = mode;
+        if (displayPrompt is not null) options.DisplayPrompt = displayPrompt;
+        if (agentMode is not null) options.AgentMode = agentMode;
+        if (attachments is not null) options.Attachments = attachments;
+        return options;
     }
 }
 

@@ -191,6 +191,22 @@ public class MessageCmdletTests
     }
 
     [Fact]
+    public void MessageOptionsHelper_MapsAgentModeAndExistingOptions()
+    {
+        var options = MessageOptionsHelper.Build(
+            "prompt",
+            "immediate",
+            "display",
+            AgentMode.Plan,
+            null);
+
+        Assert.Equal("prompt", options.Prompt);
+        Assert.Equal("immediate", options.Mode);
+        Assert.Equal("display", options.DisplayPrompt);
+        Assert.Equal(AgentMode.Plan, options.AgentMode);
+    }
+
+    [Fact]
     public void SendCopilotMessage_StopProcessingCancelsCts()
     {
         var cmdlet = new SendCopilotMessageCmdlet();

@@ -142,6 +142,10 @@ public sealed class SendCopilotMessageAsyncCmdlet : PSCmdlet
     [Parameter]
     public string? DisplayPrompt { get; set; }
 
+    [Parameter]
+    [ArgumentCompleter(typeof(AgentModeCompleter))]
+    public AgentMode? AgentMode { get; set; }
+
     protected override void EndProcessing()
     {
         if (!ModuleState.TryRequireSession(Session, out var target, out var noSession))
@@ -152,15 +156,13 @@ public sealed class SendCopilotMessageAsyncCmdlet : PSCmdlet
 
         var asyncResult = new CopilotAsyncResult(target, Tag);
 
-        var options = new MessageOptions { Prompt = Prompt };
-        if (Mode is not null) options.Mode = Mode;
-        if (DisplayPrompt is not null) options.DisplayPrompt = DisplayPrompt;
-
         var attachments = AttachmentHelper.Build(Attachment, BlobData, BlobMimeType);
-        if (attachments is not null)
-        {
-            options.Attachments = attachments;
-        }
+        var options = MessageOptionsHelper.Build(
+            Prompt,
+            Mode,
+            DisplayPrompt,
+            AgentMode,
+            attachments);
 
         try
         {

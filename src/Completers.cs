@@ -195,6 +195,58 @@ public sealed class MessageModeCompleter : IArgumentCompleter
 }
 
 /// <summary>
+/// Provides tab-completion for -AgentMode parameters on message cmdlets.
+/// </summary>
+public sealed class AgentModeCompleter : IArgumentCompleter
+{
+    private static readonly string[] Modes = { "Interactive", "Plan", "Autopilot", "Shell" };
+
+    public IEnumerable<CompletionResult> CompleteArgument(
+        string commandName,
+        string parameterName,
+        string wordToComplete,
+        CommandAst commandAst,
+        IDictionary fakeBoundParameters)
+    {
+        var prefix = wordToComplete ?? string.Empty;
+
+        foreach (var mode in Modes)
+        {
+            if (mode.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                yield return new CompletionResult(mode, mode, CompletionResultType.ParameterValue, mode);
+            }
+        }
+    }
+}
+
+/// <summary>
+/// Provides tab-completion for -RemoteSession parameters on session cmdlets.
+/// </summary>
+public sealed class RemoteSessionModeCompleter : IArgumentCompleter
+{
+    private static readonly string[] Modes = { "off", "export", "on" };
+
+    public IEnumerable<CompletionResult> CompleteArgument(
+        string commandName,
+        string parameterName,
+        string wordToComplete,
+        CommandAst commandAst,
+        IDictionary fakeBoundParameters)
+    {
+        var prefix = wordToComplete ?? string.Empty;
+
+        foreach (var mode in Modes)
+        {
+            if (mode.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                yield return new CompletionResult(mode, mode, CompletionResultType.ParameterValue, mode);
+            }
+        }
+    }
+}
+
+/// <summary>
 /// Provides tab-completion for -LogLevel parameters with the runtime's log levels.
 /// </summary>
 public sealed class LogLevelCompleter : IArgumentCompleter

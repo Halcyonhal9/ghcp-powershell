@@ -34,7 +34,12 @@ public sealed class NewCopilotToolCmdlet : PSCmdlet
     {
         try
         {
-            WriteObject(new ScriptBlockToolFunction(Name, Description, ScriptBlock, SkipPermission.IsPresent));
+            WriteObject(new ScriptBlockToolFunction(
+                Name,
+                Description,
+                ScriptBlock,
+                SkipPermission.IsPresent,
+                SessionState.LanguageMode));
         }
         catch (Exception ex)
         {
@@ -54,11 +59,16 @@ public sealed class ScriptBlockToolFunction : AIFunction
     // (see CopilotTool.SkipPermissionKey in the SDK).
     private const string SkipPermissionKey = "skip_permission";
 
-    private readonly string _scriptText;
     private readonly JsonElement _schema;
     private readonly IReadOnlyDictionary<string, object?> _additionalProperties;
+    private readonly PowerShellCallbackRunner _runner;
 
-    public ScriptBlockToolFunction(string name, string description, ScriptBlock scriptBlock, bool skipPermission = false)
+    public ScriptBlockToolFunction(
+        string name,
+        string description,
+        ScriptBlock scriptBlock,
+        bool skipPermission = false,
+        PSLanguageMode languageMode = PSLanguageMode.FullLanguage)
     {
         ArgumentException.ThrowIfNullOrEmpty(name);
         ArgumentNullException.ThrowIfNull(description);
@@ -66,8 +76,8 @@ public sealed class ScriptBlockToolFunction : AIFunction
 
         Name = name;
         Description = description;
-        _scriptText = scriptBlock.ToString();
         _schema = BuildSchema(scriptBlock);
+        _runner = new PowerShellCallbackRunner(scriptBlock, languageMode);
         _additionalProperties = skipPermission
             ? new Dictionary<string, object?> { [SkipPermissionKey] = true }
             : new Dictionary<string, object?>();
@@ -84,31 +94,13 @@ public sealed class ScriptBlockToolFunction : AIFunction
     protected override async ValueTask<object?> InvokeCoreAsync(
         AIFunctionArguments arguments, CancellationToken cancellationToken)
     {
-        using var ps = PowerShell.Create();
-        ps.AddScript(_scriptText);
-
-        foreach (var (key, value) in arguments)
-        {
-            ps.AddParameter(key, ConvertArgument(value));
-        }
-
-        ps.AddCommand("Out-String");
-
-        using var registration = cancellationToken.Register(() => ps.Stop());
-
-        var output = await ps.InvokeAsync().ConfigureAwait(false);
-        cancellationToken.ThrowIfCancellationRequested();
-
-        if (ps.HadErrors)
-        {
-            var errors = string.Join(Environment.NewLine,
-                ps.Streams.Error.ReadAll().Select(e => e.ToString()));
-            throw new InvalidOperationException(
-                errors.Length > 0 ? errors : $"Tool '{Name}' failed.");
-        }
-
-        var text = string.Concat(output.Select(o => o?.ToString())).Trim();
-        return text;
+        return await _runner.InvokeTextAsync(
+                arguments.Select(argument =>
+                    new KeyValuePair<string, object?>(
+                        argument.Key,
+                        ConvertArgument(argument.Value))),
+                cancellationToken)
+            .ConfigureAwait(false);
     }
 
     /// <summary>Converts incoming JSON argument values to native PowerShell-friendly types.</summary>

@@ -37,6 +37,9 @@ public sealed class NewCopilotClientCmdlet : PSCmdlet
     [Parameter]
     public SwitchParameter UseLoggedInUser { get; set; }
 
+    [Parameter]
+    public SwitchParameter EnableRemoteSessions { get; set; }
+
     internal CopilotClientOptions BuildOptions()
     {
         var options = new CopilotClientOptions();
@@ -56,6 +59,7 @@ public sealed class NewCopilotClientCmdlet : PSCmdlet
         if (WorkingDirectory is not null)
             options.WorkingDirectory = GetUnresolvedProviderPathFromPSPath(WorkingDirectory);
         if (UseLoggedInUser.IsPresent) options.UseLoggedInUser = true;
+        if (EnableRemoteSessions.IsPresent) options.EnableRemoteSessions = true;
 
         if (Environment is not null)
         {
