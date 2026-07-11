@@ -201,13 +201,15 @@ public sealed class ScriptBlockToolFunction : AIFunction
         };
     }
 
+    /// <summary>Returns the ScriptBlock param's [Parameter(...)] attributes (there may be more than one, e.g. per parameter set).</summary>
+    private static IEnumerable<AttributeAst> GetParameterAttributes(ParameterAst parameter)
+        => parameter.Attributes.OfType<AttributeAst>()
+            .Where(a => a.TypeName.GetReflectionAttributeType() == typeof(ParameterAttribute));
+
     private static bool IsMandatory(ParameterAst parameter)
     {
-        foreach (var attribute in parameter.Attributes.OfType<AttributeAst>())
+        foreach (var attribute in GetParameterAttributes(parameter))
         {
-            if (attribute.TypeName.GetReflectionAttributeType() != typeof(ParameterAttribute))
-                continue;
-
             foreach (var argument in attribute.NamedArguments)
             {
                 if (!argument.ArgumentName.Equals("Mandatory", StringComparison.OrdinalIgnoreCase))
@@ -225,11 +227,8 @@ public sealed class ScriptBlockToolFunction : AIFunction
 
     private static string? GetHelpMessage(ParameterAst parameter)
     {
-        foreach (var attribute in parameter.Attributes.OfType<AttributeAst>())
+        foreach (var attribute in GetParameterAttributes(parameter))
         {
-            if (attribute.TypeName.GetReflectionAttributeType() != typeof(ParameterAttribute))
-                continue;
-
             foreach (var argument in attribute.NamedArguments)
             {
                 if (argument.ArgumentName.Equals("HelpMessage", StringComparison.OrdinalIgnoreCase) &&

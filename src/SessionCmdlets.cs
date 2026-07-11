@@ -337,7 +337,7 @@ internal static class McpServerHelper
         foreach (DictionaryEntry entry in servers)
         {
             var name = entry.Key.ToString()!;
-            var value = entry.Value is PSObject psObject ? psObject.BaseObject : entry.Value;
+            var value = Unwrap(entry.Value);
             if (value is not Hashtable settings)
             {
                 throw new ArgumentException(
@@ -386,11 +386,11 @@ internal static class McpServerHelper
         return config;
     }
 
+    private static object? Unwrap(object? value)
+        => value is PSObject psObject ? psObject.BaseObject : value;
+
     private static object? GetValue(Hashtable settings, string key)
-    {
-        var value = settings[key];
-        return value is PSObject psObject ? psObject.BaseObject : value;
-    }
+        => Unwrap(settings[key]);
 
     private static string? GetString(Hashtable settings, string key)
         => GetValue(settings, key)?.ToString();
@@ -402,7 +402,7 @@ internal static class McpServerHelper
             null => null,
             string single => [single],
             IEnumerable items => items.Cast<object?>()
-                .Select(i => (i is PSObject ps ? ps.BaseObject : i)?.ToString() ?? string.Empty)
+                .Select(i => Unwrap(i)?.ToString() ?? string.Empty)
                 .ToList(),
             var other => [other.ToString() ?? string.Empty]
         };
@@ -414,8 +414,7 @@ internal static class McpServerHelper
         var result = new Dictionary<string, string>();
         foreach (DictionaryEntry entry in map)
         {
-            var value = entry.Value is PSObject psObject ? psObject.BaseObject : entry.Value;
-            result[entry.Key.ToString()!] = value?.ToString() ?? string.Empty;
+            result[entry.Key.ToString()!] = Unwrap(entry.Value)?.ToString() ?? string.Empty;
         }
         return result;
     }
